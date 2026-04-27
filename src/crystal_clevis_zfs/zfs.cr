@@ -114,21 +114,21 @@ module CrystalClevisZfs
       out.try(&.strip)
     end
 
-    # Mount the dataset and all its children that are encrypted under
-    # the same encryption root, using `zfs mount -a -l`. The `-l` flag
-    # automatically loads any keys for which keylocation can be read
-    # non-interactively; in our setup the key has already been loaded
-    # via `load_key`, so this is just the mount step.
+    # Mount the parent dataset (if it has a real mountpoint) and all
+    # its descendants. The key must already be loaded — this is just
+    # the mount step.
     def mount_recursive(parent : String) : Nil
-      run_no_input!([binary, "mount", "-l", parent])
-      # Mount children: zfs mount -a -l would mount everything, but
-      # we restrict to descendants of `parent`.
-      out, _ = capture([binary, "list", "-H", "-r", "-o", "name", parent])
+      out, _ = capture([binary, "list", "-H", "-r", "-o", "name,mountpoint", parent])
       return unless out
       out.each_line do |line|
-        ds = line.strip
-        next if ds.empty? || ds == parent
-        # Best-effort mount; some children may have mountpoint=none.
+        cols = line.split('\t')
+        next if cols.size < 2
+        ds = cols[0].strip
+        mp = cols[1].strip
+        # Skip datasets with no mountable mountpoint.
+        next if mp == "none" || mp == "-" || mp == "legacy" || mp.empty?
+        # Best-effort mount; ignore individual failures (e.g. already
+        # mounted, or directory missing).
         Process.run(binary, ["mount", ds],
           output: Process::Redirect::Close,
           error: Process::Redirect::Close)
