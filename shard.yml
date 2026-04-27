@@ -1,5 +1,5 @@
 name: crystal-clevis-zfs
-version: 0.1.0
+version: 0.2.0
 description: |
   Tang client + ZFS native encryption driver for FreeBSD: unattended
   unlock of encrypted ZFS datasets at boot via the Tang protocol

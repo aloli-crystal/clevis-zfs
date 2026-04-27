@@ -103,7 +103,13 @@ module CrystalClevisZfs
     # `zfs get keystatus` — returns "available", "unavailable", "-",
     # or nil if the dataset does not exist.
     def keystatus(dataset : String) : String?
-      out, ok = capture([binary, "get", "-H", "-o", "value", "keystatus", dataset])
+      get_property(dataset, "keystatus")
+    end
+
+    # Generic `zfs get -H -o value <prop> <dataset>`. Returns the
+    # value (stripped) or nil if the dataset / property doesn't exist.
+    def get_property(dataset : String, property : String) : String?
+      out, ok = capture([binary, "get", "-H", "-o", "value", property, dataset])
       return nil unless ok
       out.try(&.strip)
     end

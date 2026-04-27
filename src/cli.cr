@@ -36,7 +36,8 @@ module CrystalClevisZfs::CLI
 
   def bind(argv : Array(String)) : Int32
     dataset = ""
-    tang_url = ""
+    tang_urls = [] of String
+    threshold = 0
     key_store = DEFAULT_KEY_STORE
     do_init = false
     use_existing = false
@@ -45,9 +46,10 @@ module CrystalClevisZfs::CLI
     mountpoint : String? = "none"
 
     OptionParser.parse(argv.dup) do |parser|
-      parser.banner = "Usage: crystal-clevis-zfs bind -d DATASET -t TANG_URL (--init|--use-existing-key) [options]"
+      parser.banner = "Usage: crystal-clevis-zfs bind -d DATASET -t TANG_URL [-t TANG_URL ...] (--init|--use-existing-key) [options]"
       parser.on("-d NAME", "--dataset=NAME", "ZFS dataset (e.g. zroot/zsys)") { |v| dataset = v }
-      parser.on("-t URL", "--tang=URL", "Tang server URL") { |v| tang_url = v }
+      parser.on("-t URL", "--tang=URL", "Tang server URL (repeat for multiple Tangs)") { |v| tang_urls << v }
+      parser.on("-k K", "--threshold=K", "Threshold K (Tangs required to unlock); default 1") { |v| threshold = v.to_i }
       parser.on("-i", "--init", "Generate a fresh key and create the encrypted dataset") { do_init = true }
       parser.on("-e", "--use-existing-key", "Enroll the key of an existing encrypted dataset") { use_existing = true }
       parser.on("-s PATH", "--key-store=PATH", "JWE storage directory (default: #{DEFAULT_KEY_STORE})") { |v| key_store = v }
@@ -65,7 +67,7 @@ module CrystalClevisZfs::CLI
       end
     end
 
-    if dataset.empty? || tang_url.empty?
+    if dataset.empty? || tang_urls.empty?
       STDERR.puts "missing -d/--dataset or -t/--tang"
       return 64
     end
@@ -78,10 +80,19 @@ module CrystalClevisZfs::CLI
       return 64
     end
 
+    threshold = 1 if threshold == 0
+    if threshold > tang_urls.size
+      STDERR.puts "threshold (#{threshold}) cannot exceed the number of -t/--tang flags (#{tang_urls.size})"
+      return 64
+    end
+
     if do_init
       key = CrystalClevisZfs::Zfs.random_key_hex
-      tang = CrystalClevisZfs::TangClient.new(tang_url)
-      jwe = tang.bind(key)
+      jwe = if tang_urls.size == 1 && threshold == 1
+              CrystalClevisZfs::TangClient.new(tang_urls.first).bind(key)
+            else
+              CrystalClevisZfs::SssBinder.bind(key, tang_urls, threshold: threshold)
+            end
 
       Dir.mkdir_p(key_store)
       File.chmod(key_store, 0o700)
@@ -96,15 +107,67 @@ module CrystalClevisZfs::CLI
         mountpoint: mountpoint,
       )
 
-      puts "bound #{dataset} -> #{jwe_path} (Tang: #{tang_url})"
+      summary = if tang_urls.size == 1
+                  "Tang: #{tang_urls.first}"
+                else
+                  "#{tang_urls.size} Tangs, threshold #{threshold}"
+                end
+      puts "bound #{dataset} -> #{jwe_path} (#{summary})"
     else
-      STDERR.puts "--use-existing-key not implemented yet"
-      return 70
+      bind_use_existing(dataset, tang_urls, threshold, key_store)
     end
     0
   rescue ex
     STDERR.puts "bind failed: #{ex.message}"
     1
+  end
+
+  # `--use-existing-key` flow: the dataset is already encrypted and
+  # its key is currently loaded. We read it via `zfs get keylocation`,
+  # enroll it through Tang, and write the JWE. The key never appears
+  # in argv at any point.
+  private def bind_use_existing(dataset : String, tang_urls : Array(String),
+                                threshold : Int32, key_store : String) : Nil
+    raise "dataset #{dataset} is not encrypted" unless CrystalClevisZfs::Zfs.encrypted?(dataset)
+    raise "dataset #{dataset} key is not loaded; run `zfs load-key` first" unless CrystalClevisZfs::Zfs.key_loaded?(dataset)
+
+    keylocation = CrystalClevisZfs::Zfs.get_property(dataset, "keylocation") ||
+                  raise "could not read keylocation of #{dataset}"
+    unless keylocation.starts_with?("file://")
+      raise "expected keylocation=file://..., got '#{keylocation}'. " \
+            "Use `zfs change-key -o keylocation=file:///path/to/key` first."
+    end
+    key_path = keylocation.sub("file://", "")
+    raise "key file #{key_path} not readable" unless File::Info.readable?(key_path)
+
+    raw = File.read(key_path).strip
+    # Accept either 64 hex chars or 32 binary bytes (then encode to hex).
+    key_hex = if raw.bytesize == 64 && raw.chars.all? { |c| c.ascii_number? || ('a'..'f').includes?(c.downcase) }
+                raw.downcase
+              elsif raw.bytesize == 32
+                raw.to_slice.hexstring
+              else
+                raise "key file format not recognized (expected 64 hex chars or 32 raw bytes, got #{raw.bytesize} bytes)"
+              end
+
+    jwe = if tang_urls.size == 1 && threshold == 1
+            CrystalClevisZfs::TangClient.new(tang_urls.first).bind(key_hex)
+          else
+            CrystalClevisZfs::SssBinder.bind(key_hex, tang_urls, threshold: threshold)
+          end
+
+    Dir.mkdir_p(key_store)
+    File.chmod(key_store, 0o700)
+    jwe_path = jwe_path_for(key_store, dataset)
+    File.write(jwe_path, jwe)
+    File.chmod(jwe_path, 0o600)
+
+    summary = if tang_urls.size == 1
+                "Tang: #{tang_urls.first}"
+              else
+                "#{tang_urls.size} Tangs, threshold #{threshold}"
+              end
+    puts "enrolled existing key of #{dataset} -> #{jwe_path} (#{summary})"
   end
 
   def unlock(argv : Array(String)) : Int32

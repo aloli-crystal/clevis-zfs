@@ -3,6 +3,25 @@
 :toc-title: Versions
 :toclevels: 2
 
+== v0.2.0 — 2026-04-27
+
+CLI surface for multi-Tang and existing-key enrollment.
+
+* CLI : `bind` accepts `--tang URL` repeated and `--threshold K`.
+  Falls back to single-Tang when only one URL is passed and
+  threshold is 1 (or omitted) — backward compatible with v0.1
+  callers.
+* CLI : `bind --use-existing-key` enrolls the key of an already
+  encrypted dataset (only when `keylocation=file://...`). Reads
+  the key from the file (64 hex chars or 32 raw bytes), pushes it
+  through Tang, writes the JWE. Useful for migrating from Option C
+  (`mode: ssh_unlock`) to Option D (`mode: tang`).
+* `Zfs.get_property` exposed publicly (was inlined in `keystatus`).
+
+No breaking change: a v0.1 JWE is still readable by `unlock`, and
+the v0.1 single-Tang `bind --init` continues to produce the same
+single-Tang JWE format.
+
 == v0.1.0 — 2026-04-27
 
 Initial release. Successor to `crystal-clevis-geli` (deprecated),
