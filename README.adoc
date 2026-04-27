@@ -1,0 +1,125 @@
+= crystal-clevis-zfs
+:toc: left
+:toclevels: 2
+:source-highlighter: rouge
+
+image:https://github.com/aloli-crystal/crystal-clevis-zfs/actions/workflows/ci.yml/badge.svg[CI,link=https://github.com/aloli-crystal/crystal-clevis-zfs/actions/workflows/ci.yml]
+
+Tang client + ZFS native encryption driver for FreeBSD: **unattended
+boot-time unlock** of encrypted ZFS datasets via the Tang protocol
+(Network-Bound Disk Encryption — NBDE).
+
+Successor to https://github.com/aloli-crystal/crystal-clevis-geli[crystal-clevis-geli],
+using ZFS native encryption instead of GELI to benefit from
+**pre-encryption compression** and **`zfs send -w` portable
+encrypted backups**.
+
+French version: link:README.fr.adoc[README.fr.adoc].
+
+== Why ZFS native encryption (and not GELI)?
+
+* **Performance**: ZFS compression runs *before* encryption.
+  Compressible payloads (logs, databases, JSON, source code) shrink
+  by 2-5× before being encrypted, so I/O and CPU are both saved.
+  With GELI, ZFS sees cryptographic noise and compression becomes
+  useless.
+* **Boot simplicity**: a single `zpool import` + `zfs load-key`
+  instead of a chain of `geli attach × N` + `zpool import × N`.
+* **Portable backups**: `zfs send -w` exports encrypted snapshots
+  as-is, so off-site backups can flow through untrusted relays
+  without ever exposing the key.
+
+== Architecture
+
+[source]
+----
+                  ┌────────────────────────────────────┐
+                  │     crystal-clevis-zfs (this)      │
+                  │                                    │
+                  │  bind / unlock  ── zfs load-key    │
+                  │  Tang HTTP/JOSE                    │
+                  └─────────────┬──────────────────────┘
+                                │
+                                │ HTTP + JOSE
+                                ▼
+                       ┌────────────────┐
+                       │ Tang server(s) │
+                       │ (FreeBSD pkg)  │
+                       └────────────────┘
+----
+
+== Usage
+
+[source,shell]
+----
+# Bind a ZFS dataset to a Tang server (creates the encrypted dataset)
+crystal-clevis-zfs bind --init \
+    --dataset zroot/zsys \
+    --tang http://tang-nas.local:8888
+
+# At boot (called from rc.d):
+crystal-clevis-zfs unlock --dataset zroot/zsys
+----
+
+== Status
+
+* **v0.1**: single-Tang bind/unlock for one ZFS dataset. Tang
+  protocol on top of `crystal-jose`. JOSE primitives validated
+  against `latchset/jose`.
+* **v0.1**: ZFS native encryption (keyformat=hex, keylocation=prompt
+  via stdin, never on argv).
+* **v0.1**: rc.d for unattended boot-time unlocking (after
+  `NETWORKING`, before `mountcritremote`).
+* **v0.2 (planned)**: Shamir Secret Sharing across multiple Tang
+  servers (`pin: sss`), threshold N-of-M.
+
+== Installation
+
+[source,shell]
+----
+shards install
+crystal build src/cli.cr -o crystal-clevis-zfs --release
+sudo install -m 0755 crystal-clevis-zfs /usr/local/sbin/
+sudo install -m 0755 etc/rc.d/crystal-clevis-zfs /usr/local/etc/rc.d/
+----
+
+Then in `/etc/rc.conf`:
+
+[source,shell]
+----
+crystal_clevis_zfs_enable="YES"
+crystal_clevis_zfs_datasets="zroot/zsys zroot/zdata zroot/zsave"
+----
+
+== Development
+
+[source,shell]
+----
+shards install
+crystal spec
+crystal tool format --check
+bin/ameba
+----
+
+== Key handling discipline
+
+* The key is **never** passed via command-line arguments (would leak
+  through `ps`).
+* The key is **never** set in the environment of a child process.
+* The key is fed to `zfs(8)` via stdin, then the pipe is closed.
+* The Crystal `String` carrying the key is **scrubbed** (overwritten
+  with zeros) before being released to the GC.
+* The JWE on disk does **not** contain the key in clear: it only
+  contains the McCallum-Relyea envelope, which can be unwrapped
+  only by collaborating with the Tang server.
+
+== License
+
+MIT — see link:LICENSE[LICENSE].
+
+== References
+
+* https://github.com/latchset/clevis[Clevis] — the Linux/LUKS reference (`pin: sss`)
+* https://github.com/latchset/tang[Tang] — the server side
+* https://www.freebsd.org/cgi/man.cgi?zfsprops(7)[zfsprops(7)] — ZFS native encryption properties
+* https://github.com/aloli-crystal/crystal-jose[crystal-jose] — JOSE primitives in pure Crystal

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [production]
+  pull_request:
+    branches: [production]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        crystal: ["1.19.0", "latest"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: crystal-lang/install-crystal@v1
+        with:
+          crystal: ${{ matrix.crystal }}
+
+      - name: Install dependencies
+        run: shards install
+
+      - name: Check formatting
+        run: crystal tool format --check
+
+      - name: Run tests
+        run: crystal spec
+
+      - name: Run linter
+        run: bin/ameba
+
+      - name: Build CLI
+        run: crystal build src/cli.cr -o crystal-clevis-zfs --release

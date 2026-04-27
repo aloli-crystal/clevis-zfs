@@ -1,0 +1,33 @@
+= Changelog
+:toc: left
+:toc-title: Versions
+:toclevels: 2
+
+== v0.1.0 — 2026-04-27
+
+Initial release. Successor to `crystal-clevis-geli` (deprecated),
+using ZFS native encryption instead of GELI.
+
+* **Module `Zfs`** : thin wrapper around `zfs(8)` for
+  `create_encrypted`, `load_key`, `unload_key`, `change_key`,
+  `key_loaded?`, `encrypted?`, `mount_recursive`. Key fed to ZFS
+  via stdin only, never via argv or env.
+* **Module `TangClient`** (reused from `crystal-clevis-geli` v0.1) :
+  ECDH-ES bind/recover against a Tang server.
+* **Module `SssBinder`** + **`Sss`** (reused) : Shamir Secret
+  Sharing for multi-Tang threshold N-of-M. Code is present and
+  tested but the v0.1 CLI exposes single-Tang only ; full multi-Tang
+  CLI surface lands in v0.2.
+* **CLI**: `bind` (single-Tang via `--init`), `unlock` (auto-detects
+  SSS vs single-Tang from the JWE header), `version`, `help`.
+* **rc.d** for unattended boot-time unlock.
+* **Tests** : 47 examples (unit tests + Sss round-trips +
+  SssBinder + EcArithmetic + TangClient mock + Zfs with a fake
+  `zfs(8)` shell-out script).
+
+=== Note on the GELI predecessor
+
+`crystal-clevis-geli` v0.1 (and its v0.2 with multi-Tang SSS)
+remains usable but is no longer the recommended path for FreeBSD +
+ZFS deployments. See `crystal-clevis-zfs-specs.adoc` in
+`crystal-beryl` for the rationale.
