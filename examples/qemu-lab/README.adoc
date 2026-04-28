@@ -1,0 +1,130 @@
+= Banc de test QEMU pour crystal-clevis-zfs
+:author: Philippe Nénert
+:revdate: 28 avril 2026
+:revnumber: 0.3
+:toc: left
+:toclevels: 2
+:icons: font
+
+Bac à sable scriptable, sur **macOS Apple Silicon**, qui monte deux
+VMs FreeBSD 15 aarch64 pour valider de bout en bout
+`crystal-clevis-zfs` :
+
+* **VM `tang`** héberge **trois** instances Tang (paquet FreeBSD
+  `security/tang`) sur les ports 8888, 8889, 8890 — la première
+  via rc.d, les deux autres lancées manuellement.
+* **VM `client`** crée un pool ZFS de test, exerce
+  `crystal-clevis-zfs` en single-Tang et multi-Tang K=2/N=3 (avec
+  simulation de pannes).
+
+NOTE: Cette révision (0.2) cible `crystal-clevis-zfs`. La rev 0.1
+testait `crystal-clevis-geli` (déprécié). Voir
+`crystal-beryl/boot-and-mount-plan.adoc` § « Pivot GELI → ZFS
+native » pour la justification.
+
+Tang n'est pas exposé sur un réseau privé entre les deux VMs : il
+est publié sur le **host** via trois port forwards QEMU
+(`host:8888`, `host:8889`, `host:8890`), et la VM client les
+contacte via `http://10.0.2.2:<port>` (la passerelle NAT par
+défaut de QEMU `user networking`).
+
+== Pré-requis
+
+* macOS Apple Silicon (M-series), QEMU 9.x ou plus récent
+  (`brew install qemu`).
+* `xz` et `curl` (`brew install xz` ; `curl` est natif).
+* Environ **3 GiB** d'espace disque (image de base + 2 disques VMs).
+* Connexion Internet pour la première exécution (téléchargement de
+  l'image FreeBSD et des paquets via `pkg`).
+
+== Enchaînement à exécuter
+
+[source,shell]
+----
+cd qemu/
+./00-fetch-image.sh         # ~600 MB téléchargés, ~3 GiB extraits
+./01-prepare-disks.sh       # clone l'image + génère les seeds cloud-init
+./10-run-tang.sh            # boot la VM tang en arrière-plan
+./11-run-client.sh          # boot la VM client en arrière-plan
+./20-provision-tang.sh      # pkg install tang + clés + 3 instances tangd
+./21-provision-client.sh    # pkg install crystal + clone + build
+./30-test-bind-unlock.sh    # le test : single-Tang + multi K=2/N=3 + pannes
+./99-stop-all.sh            # arrête les deux VMs proprement
+----
+
+Vous pouvez aussi suivre le boot en parallèle :
+
+[source,shell]
+----
+tail -f logs/tang.log     # console série de la VM tang
+tail -f logs/client.log   # console série de la VM client
+----
+
+== Ce que le test 30 valide
+
+. **Single-Tang** : `bind --init` crée un dataset ZFS chiffré
+  (AES-256-GCM par défaut), écrit le JWE, attache la clé. `unlock`
+  après `zfs unload-key` re-déverrouille.
+. **I/O réelle** sur un dataset enfant chiffré.
+. **Multi-Tang K=2/N=3** : `bind --init` avec 3 URLs et
+  `--threshold 2` produit un JWE Clevis-style (`clevis.sss` dans
+  le header).
+. **Tolérance d'1 panne** : Tang #2 tué, `unlock` réussit avec
+  Tangs #1 et #3.
+. **Échec contrôlé sur 2 pannes** : Tangs #2 et #3 tués, `unlock`
+  échoue proprement avec un message « recovered only 1 of 2
+  required shares ».
+
+== Topologie
+
+[source]
+----
+                          host (macOS, Apple Silicon)
+                  ┌────────────────────────────────────┐
+                  │                                    │
+   ssh :2222 ────►│ tangVM:22                          │
+   ssh :2223 ────►│ clientVM:22                        │
+                  │                                    │
+   :8888  ───────►│ tangVM:8888  (Tang #1, rc.d)       │
+   :8889  ───────►│ tangVM:8889  (Tang #2, manuel)     │
+   :8890  ───────►│ tangVM:8890  (Tang #3, manuel)     │
+                  │                                    │
+                  │   clientVM ───► host:8888  ◄───────│
+                  │   (curl http://10.0.2.2:8888/adv)  │
+                  └────────────────────────────────────┘
+----
+
+== Idempotence et reset
+
+* Les scripts sont idempotents : on peut les rejouer sans dommage.
+* Pour repartir d'un état propre : `./99-stop-all.sh` puis effacer
+  `run/*.qcow2` et `run/*.iso` (les images dans `images/` restent
+  réutilisables).
+* Le test 30 fait son propre reset (zpool destroy, mdconfig -d, rm
+  des JWE) à chaque lancement, donc on peut le rejouer en boucle.
+
+== Détails techniques
+
+* Image : *FreeBSD 15.0-RELEASE arm64-aarch64 BASIC-CLOUDINIT-ufs*.
+* Boot : UEFI via `edk2-aarch64-code.fd` (paquet QEMU).
+* Accélération : `-accel hvf` (Hypervisor.framework natif aarch64).
+* Cloud-init : seed ISO (NoCloud) construit avec `hdiutil makehybrid`,
+  injecte la clé SSH et configure l'utilisateur `freebsd` + sudo.
+* Réseau : QEMU `user networking` (NAT) — pas besoin de bridge ni
+  de privilèges admin sur le host.
+* Pool ZFS de test : créé sur un fichier vnode 1 GiB
+  (`/var/zpool-test.img` + `mdconfig -u 1`), persiste à travers
+  des reboots de la VM tant que le qcow2 client persiste.
+
+== Limites connues
+
+* La VM `tang` recompile ses clés à chaque création de disque
+  (pas de persistance hors disque). Pour rejouer exactement le
+  même enrôlement, ne pas effacer `run/tang.qcow2`.
+* Le test ne couvre pas le **boot automatique** (rc.d
+  `crystal-clevis-zfs unlock` au démarrage). Cela viendra dans une
+  itération suivante (configurer rc.conf + reboot la VM).
+* Tang #2 et #3 sont lancés manuellement via `tangd -p PORT -l DIR`
+  et ne survivent pas à un reboot de la VM tang. Pour les
+  pérenniser, il faudrait écrire un script rc.d
+  `tangd2`/`tangd3` ; pas critique pour le test e2e.

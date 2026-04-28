@@ -70,8 +70,63 @@ crystal-clevis-zfs unlock --dataset zroot/zsys
   via stdin, never on argv).
 * **v0.1**: rc.d for unattended boot-time unlocking (after
   `NETWORKING`, before `mountcritremote`).
-* **v0.2 (planned)**: Shamir Secret Sharing across multiple Tang
-  servers (`pin: sss`), threshold N-of-M.
+* **v0.2** ✅: CLI for multi-Tang Shamir Secret Sharing
+  (`--tang URL` repeatable, `--threshold K`). The `unlock`
+  subcommand auto-detects single-Tang vs SSS from the JWE header.
+* **v0.2** ✅: `bind --use-existing-key` for migrating an
+  already-encrypted dataset (`mode: ssh_unlock` → `mode: tang`)
+  without rewriting the data.
+* **v0.2** ✅: handles **all three RFC 7515 JWS serializations**
+  for Tang advertisements (Compact, Flattened JSON, General JSON
+  with `signatures[]` array — emitted by FreeBSD `tangd` after
+  `tangd-rotate-keys`).
+
+== Tested in a real FreeBSD VM
+
+The repository ships a **scripted QEMU lab** (macOS Apple Silicon)
+under link:examples/qemu-lab/[examples/qemu-lab/]. Two FreeBSD 15
+aarch64 VMs (Tang server + ZFS client), eight numbered shell
+scripts, ~10 minutes from cold start to a fully validated end-to-end.
+
+The lab covers:
+
+[cols="2,3", options="header"]
+|===
+| Scenario | Expected outcome
+
+| Single-Tang `bind --init` + `unlock`
+| Encrypted ZFS dataset (AES-256-GCM, lz4) created and reattached
+  after `zfs unload-key`.
+
+| Multi-Tang K=2/N=3 `bind` + `unlock`
+| JWE carries `clevis.sss` claim with 3 sub-JWE; unlock with all
+  Tangs reachable.
+
+| Tolerance: kill 1 of 3 Tangs
+| `unlock` still succeeds.
+
+| Failure: kill 2 of 3 Tangs
+| `unlock` fails cleanly with `recovered only 1 / 2 required shares`.
+
+| Reboot the VM
+| `rc.d/crystal-clevis-zfs` auto-unlocks both datasets within
+  ~20 seconds; child datasets mount automatically; I/O works.
+|===
+
+To run it yourself:
+
+[source,shell]
+----
+cd examples/qemu-lab/
+./00-fetch-image.sh         # downloads the FreeBSD 15 cloud image
+./01-prepare-disks.sh       # clones disks, generates cloud-init seeds
+./10-run-tang.sh            # boots the Tang VM
+./11-run-client.sh          # boots the ZFS client VM
+./20-provision-tang.sh      # installs tang, runs 3 tangd instances
+./21-provision-client.sh    # builds + installs the binary
+./30-test-bind-unlock.sh    # 4 test scenarios, exits non-zero on any failure
+./99-stop-all.sh            # clean shutdown
+----
 
 == Installation
 

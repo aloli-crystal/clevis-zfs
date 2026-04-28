@@ -6,3 +6,10 @@
 *.o
 /crystal-clevis-zfs
 .DS_Store
+
+# Local artefacts of the QEMU lab in examples/ — never commit these:
+# downloaded VM images (~3 GiB), per-run disks, logs, SSH key pair.
+/examples/qemu-lab/images/
+/examples/qemu-lab/run/
+/examples/qemu-lab/logs/
+/examples/qemu-lab/ssh/

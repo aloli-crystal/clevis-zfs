@@ -70,8 +70,66 @@ crystal-clevis-zfs unlock --dataset zroot/zsys
   via stdin, jamais en argv).
 * **v0.1** : rc.d pour déverrouillage automatique au boot (après
   `NETWORKING`, avant `mountcritremote`).
-* **v0.2 (prévu)** : Shamir Secret Sharing sur plusieurs serveurs
-  Tang (`pin: sss`), threshold N-of-M.
+* **v0.2** ✅ : CLI multi-Tang via Shamir Secret Sharing
+  (`--tang URL` répétable, `--threshold K`). La sous-commande
+  `unlock` détecte automatiquement le format single-Tang ou SSS
+  depuis l'en-tête JWE.
+* **v0.2** ✅ : `bind --use-existing-key` pour migrer un dataset
+  déjà chiffré (`mode: ssh_unlock` → `mode: tang`) sans réécrire
+  les données.
+* **v0.2** ✅ : prend en charge **les trois sérialisations JWS de
+  RFC 7515** pour les advertisements Tang (Compact, Flattened
+  JSON, General JSON avec tableau `signatures[]` — émis par le
+  démon `tangd` FreeBSD après `tangd-rotate-keys`).
+
+== Testé dans une vraie VM FreeBSD
+
+Le dépôt fournit un **banc QEMU scripté** (macOS Apple Silicon)
+sous link:examples/qemu-lab/[examples/qemu-lab/]. Deux VMs
+FreeBSD 15 aarch64 (serveur Tang + client ZFS), huit scripts
+shell numérotés, ~10 minutes du démarrage à froid jusqu'à une
+validation end-to-end complète.
+
+Le banc couvre :
+
+[cols="2,3", options="header"]
+|===
+| Scénario | Résultat attendu
+
+| Single-Tang `bind --init` + `unlock`
+| Dataset ZFS chiffré (AES-256-GCM, lz4) créé puis ré-attaché
+  après `zfs unload-key`.
+
+| Multi-Tang K=2/N=3 `bind` + `unlock`
+| Le JWE contient le claim `clevis.sss` avec 3 sub-JWE ; unlock
+  avec les 3 Tangs disponibles.
+
+| Tolérance : couper 1 Tang sur 3
+| `unlock` continue à fonctionner.
+
+| Échec : couper 2 Tangs sur 3
+| `unlock` échoue proprement avec `recovered only 1 / 2 required shares`.
+
+| Reboot de la VM
+| `rc.d/crystal-clevis-zfs` déverrouille automatiquement les
+  deux datasets en ~20 secondes ; les datasets enfants se
+  montent ; les I/O fonctionnent.
+|===
+
+Pour le rejouer vous-même :
+
+[source,shell]
+----
+cd examples/qemu-lab/
+./00-fetch-image.sh         # télécharge l'image cloud FreeBSD 15
+./01-prepare-disks.sh       # clone les disques, génère les seeds cloud-init
+./10-run-tang.sh            # démarre la VM Tang
+./11-run-client.sh          # démarre la VM client ZFS
+./20-provision-tang.sh      # installe tang, lance 3 instances tangd
+./21-provision-client.sh    # build + installe le binaire
+./30-test-bind-unlock.sh    # 4 scénarios de test, exit code != 0 si échec
+./99-stop-all.sh            # arrêt propre
+----
 
 == Installation
 
