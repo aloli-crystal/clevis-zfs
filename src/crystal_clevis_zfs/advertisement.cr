@@ -21,13 +21,23 @@ module CrystalClevisZfs
                    @derive_keys : Array(CrystalJose::JWK::ECKey))
     end
 
-    # Parse a JWS advertisement (Compact or Flattened JSON form, per
-    # RFC 7515 §7.2.2 — the FreeBSD `tangd` daemon emits the latter)
-    # and verify its self-signature using one of the embedded signing
-    # keys.
+    # Parse a JWS advertisement and verify its self-signature using
+    # one of the embedded signing keys. Supports the three RFC 7515
+    # serializations:
+    #
+    # * **Compact** (`a.b.c`).
+    # * **Flattened JSON** (RFC 7515 §7.2.2): single signature object
+    #   merged into the top-level JSON.
+    # * **General JSON** (RFC 7515 §7.2.1): `signatures` array of
+    #   `{protected, signature}` objects. The FreeBSD `tangd` daemon
+    #   emits this form when it carries multiple signing keys, e.g.
+    #   after a `tangd-rotate-keys` cycle.
     def self.from_jws(jws : String) : Advertisement
-      jws = compactify_if_flattened(jws)
-      info = CrystalJose::JWS.decode(jws)
+      candidates = to_compact_candidates(jws)
+
+      # Decode payload from the first candidate (any will do — the
+      # payload is identical across signatures).
+      info = CrystalJose::JWS.decode(candidates.first)
       payload_str = String.new(info[:payload])
       jwks = Hash(String, JSON::Any).from_json(payload_str)
       keys_array = jwks["keys"]?.try(&.as_a) || raise(Error.new("advertisement payload is not a JWKSet"))
@@ -52,9 +62,11 @@ module CrystalClevisZfs
       raise Error.new("advertisement contains no signing key") if signing_keys.empty?
       raise Error.new("advertisement contains no deriveKey") if derive_keys.empty?
 
-      verify_self_signature!(jws, signing_keys)
+      # At least one of the (candidate, signing_key) pairs must verify.
+      verified_compact = candidates.find { |c| signature_verifies?(c, signing_keys) }
+      raise Error.new("advertisement signature does not match any embedded signing key") unless verified_compact
 
-      Advertisement.new(jws, signing_keys, derive_keys)
+      Advertisement.new(verified_compact, signing_keys, derive_keys)
     end
 
     # Find a deriveKey by its thumbprint (RFC 7638).
@@ -62,39 +74,48 @@ module CrystalClevisZfs
       @derive_keys.find { |k| k.thumbprint_base64url == thumbprint_b64url }
     end
 
-    # Convert a JWS in Flattened JSON Serialization (RFC 7515 §7.2.2)
-    # to Compact Serialization. A Compact-form input is returned as is.
-    private def self.compactify_if_flattened(jws : String) : String
+    # Return one Compact JWS per signature in the input. For Compact
+    # or Flattened forms there is only one candidate; for General
+    # form there is one per `signatures[]` entry.
+    private def self.to_compact_candidates(jws : String) : Array(String)
       jws = jws.strip
-      return jws unless jws.starts_with?("{")
+      return [jws] unless jws.starts_with?("{")
 
       obj = Hash(String, JSON::Any).from_json(jws)
-      protected_b64 = obj["protected"]?.try(&.as_s) ||
-                      raise(Error.new("Flattened JWS missing 'protected' header"))
       payload_b64 = obj["payload"]?.try(&.as_s) ||
-                    raise(Error.new("Flattened JWS missing 'payload'"))
-      signature_b64 = obj["signature"]?.try(&.as_s) ||
-                      raise(Error.new("Flattened JWS missing 'signature'"))
+                    raise(Error.new("JSON JWS missing 'payload'"))
 
-      "#{protected_b64}.#{payload_b64}.#{signature_b64}"
+      if signatures = obj["signatures"]?.try(&.as_a)
+        # General JSON serialization
+        raise Error.new("General JWS has empty signatures[]") if signatures.empty?
+        signatures.map do |sig_any|
+          sig = sig_any.as_h
+          protected_b64 = sig["protected"]?.try(&.as_s) ||
+                          raise(Error.new("General JWS signature missing 'protected'"))
+          signature_b64 = sig["signature"]?.try(&.as_s) ||
+                          raise(Error.new("General JWS signature missing 'signature'"))
+          "#{protected_b64}.#{payload_b64}.#{signature_b64}"
+        end
+      else
+        # Flattened JSON serialization
+        protected_b64 = obj["protected"]?.try(&.as_s) ||
+                        raise(Error.new("Flattened JWS missing 'protected' header"))
+        signature_b64 = obj["signature"]?.try(&.as_s) ||
+                        raise(Error.new("Flattened JWS missing 'signature'"))
+        ["#{protected_b64}.#{payload_b64}.#{signature_b64}"]
+      end
     end
 
-    private def self.uses_for(key_hash : Hash(String, JSON::Any)) : Array(String)
-      ops = key_hash["key_ops"]?
-      return [] of String unless ops
-      ops.as_a.map(&.as_s)
-    end
-
-    # Verify the advertisement is signed by one of the embedded
-    # signing keys (Tang advertisements are self-signed).
-    private def self.verify_self_signature!(jws : String, signing_keys : Array(CrystalJose::JWK::ECKey))
+    # True if some signing key verifies the Compact JWS `jws`.
+    private def self.signature_verifies?(jws : String,
+                                         signing_keys : Array(CrystalJose::JWK::ECKey)) : Bool
       info = CrystalJose::JWS.decode(jws)
-      header = info[:header]
-      alg = header["alg"]?.try(&.as_s) || raise(Error.new("missing alg in advertisement JWS header"))
+      alg_str = info[:header]["alg"]?.try(&.as_s)
+      return false unless alg_str
+      alg = CrystalJose::JWS::Algorithm.from_name(alg_str)
 
-      # Try every signing key — Tang doesn't always include a kid.
-      verified = signing_keys.any? do |k|
-        next false unless k.curve == CrystalJose::JWS::Algorithm.from_name(alg).curve
+      signing_keys.any? do |k|
+        next false unless k.curve == alg.curve
         begin
           CrystalJose::JWS.verify(jws, k)
           true
@@ -102,8 +123,14 @@ module CrystalClevisZfs
           false
         end
       end
+    rescue CrystalJose::JWS::UnsupportedAlgorithmError
+      false
+    end
 
-      raise Error.new("advertisement signature does not match any embedded signing key") unless verified
+    private def self.uses_for(key_hash : Hash(String, JSON::Any)) : Array(String)
+      ops = key_hash["key_ops"]?
+      return [] of String unless ops
+      ops.as_a.map(&.as_s)
     end
   end
 end
