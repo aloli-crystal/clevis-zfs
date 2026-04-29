@@ -1,6 +1,6 @@
 require "json"
 require "random/secure"
-require "crystal-jose"
+require "jose"
 
 require "./openssl_ext"
 require "./sss"

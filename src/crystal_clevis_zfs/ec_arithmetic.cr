@@ -1,4 +1,4 @@
-require "crystal-jose"
+require "jose"
 require "./openssl_ext"
 
 module CrystalClevisZfs

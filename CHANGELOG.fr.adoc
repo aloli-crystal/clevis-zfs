@@ -3,6 +3,21 @@
 :toc-title: Versions
 :toclevels: 2
 
+== v0.2.1 — 2026-04-29
+
+=== Modifié
+
+* **Repo GitHub renommé** vers `aloli-crystal/clevis-zfs` (convention
+  de nommage Aloli : les créations originales abandonnent le préfixe
+  `crystal-`). Les anciens liens redirigent automatiquement.
+* Champ `name:`, cible de compilation et binaire CLI alignés sur le
+  nouveau nom du repo. Shim d'entrée renommé `src/clevis-zfs.cr`
+  (charge toujours `src/crystal_clevis_zfs.cr`, le code).
+* Dépendance vers JOSE mise à jour sur la nouvelle URL
+  (`aloli-crystal/jose`). Chemins `require` adaptés.
+* Le module interne `Clevis` et le dossier `src/crystal_clevis_zfs/`
+  restent inchangés — nettoyage reporté.
+
 == v0.2.0 — 2026-04-27
 
 Surface CLI pour le multi-Tang et l'enrôlement de clé existante.
@@ -50,5 +65,5 @@ Première version publiée. Successeur de `crystal-clevis-geli`
 `crystal-clevis-geli` v0.1 (et sa v0.2 avec SSS multi-Tang) reste
 utilisable mais n'est plus le chemin recommandé pour les
 déploiements FreeBSD + ZFS. Voir
-`crystal-clevis-zfs-specs.adoc` dans `crystal-beryl` pour la
+`crystal-clevis-zfs-specs.adoc` dans `beryl` pour la
 justification.

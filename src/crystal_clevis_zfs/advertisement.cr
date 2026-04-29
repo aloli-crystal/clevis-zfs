@@ -1,5 +1,5 @@
 require "json"
-require "crystal-jose"
+require "jose"
 
 module CrystalClevisZfs
   # Parsed Tang advertisement: a JWS Compact whose payload is a JWKSet.

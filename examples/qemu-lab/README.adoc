@@ -19,7 +19,7 @@ VMs FreeBSD 15 aarch64 pour valider de bout en bout
 
 NOTE: Cette révision (0.2) cible `crystal-clevis-zfs`. La rev 0.1
 testait `crystal-clevis-geli` (déprécié). Voir
-`crystal-beryl/boot-and-mount-plan.adoc` § « Pivot GELI → ZFS
+`beryl/boot-and-mount-plan.adoc` § « Pivot GELI → ZFS
 native » pour la justification.
 
 Tang n'est pas exposé sur un réseau privé entre les deux VMs : il

@@ -1,5 +1,5 @@
-name: crystal-clevis-zfs
-version: 0.2.0
+name: clevis-zfs
+version: 0.2.1
 description: |
   Tang client + ZFS native encryption driver for FreeBSD: unattended
   unlock of encrypted ZFS datasets at boot via the Tang protocol
@@ -12,12 +12,12 @@ license: MIT
 crystal: ">= 1.19.0"
 
 targets:
-  crystal-clevis-zfs:
+  clevis-zfs:
     main: src/cli.cr
 
 dependencies:
-  crystal-jose:
-    github: aloli-crystal/crystal-jose
+  jose:
+    github: aloli-crystal/jose
     version: ~> 0.1
 
 development_dependencies:

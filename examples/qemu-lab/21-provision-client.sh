@@ -26,7 +26,7 @@ run_ssh client "cd ~/crystal-clevis-zfs && git pull --ff-only"
 
 echo "[client] installing runtime dependencies only (skip ameba dev_dep)"
 # ameba's postinstall builds with -Dpreview_mt and crashes in this VM
-# (2 GiB RAM is tight). Ameba is a dev tool; we only need crystal-jose.
+# (2 GiB RAM is tight). Ameba is a dev tool; we only need jose.
 run_ssh client "cd ~/crystal-clevis-zfs && shards install --without-development"
 
 echo "[client] running test suite"

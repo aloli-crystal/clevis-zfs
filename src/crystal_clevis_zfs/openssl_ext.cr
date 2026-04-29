@@ -1,5 +1,5 @@
 require "openssl/lib_crypto"
-require "crystal-jose"
+require "jose"
 
 # Additional LibCrypto bindings for EC point arithmetic, needed by
 # the Tang client recovery dance (point addition, scalar

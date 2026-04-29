@@ -1,7 +1,7 @@
 require "http/client"
 require "uri"
 require "json"
-require "crystal-jose"
+require "jose"
 
 require "./advertisement"
 require "./ec_arithmetic"

@@ -1,9 +1,9 @@
-= crystal-clevis-zfs
+= clevis-zfs
 :toc: left
 :toclevels: 2
 :source-highlighter: rouge
 
-image:https://github.com/aloli-crystal/crystal-clevis-zfs/actions/workflows/ci.yml/badge.svg[CI,link=https://github.com/aloli-crystal/crystal-clevis-zfs/actions/workflows/ci.yml]
+image:https://github.com/aloli-crystal/clevis-zfs/actions/workflows/ci.yml/badge.svg[CI,link=https://github.com/aloli-crystal/clevis-zfs/actions/workflows/ci.yml]
 
 Tang client + ZFS native encryption driver for FreeBSD: **unattended
 boot-time unlock** of encrypted ZFS datasets via the Tang protocol
@@ -34,7 +34,7 @@ French version: link:README.fr.adoc[README.fr.adoc].
 [source]
 ----
                   ┌────────────────────────────────────┐
-                  │     crystal-clevis-zfs (this)      │
+                  │     clevis-zfs (this)      │
                   │                                    │
                   │  bind / unlock  ── zfs load-key    │
                   │  Tang HTTP/JOSE                    │
@@ -53,18 +53,18 @@ French version: link:README.fr.adoc[README.fr.adoc].
 [source,shell]
 ----
 # Bind a ZFS dataset to a Tang server (creates the encrypted dataset)
-crystal-clevis-zfs bind --init \
+clevis-zfs bind --init \
     --dataset zroot/zsys \
     --tang http://tang-nas.local:8888
 
 # At boot (called from rc.d):
-crystal-clevis-zfs unlock --dataset zroot/zsys
+clevis-zfs unlock --dataset zroot/zsys
 ----
 
 == Status
 
 * **v0.1**: single-Tang bind/unlock for one ZFS dataset. Tang
-  protocol on top of `crystal-jose`. JOSE primitives validated
+  protocol on top of `jose`. JOSE primitives validated
   against `latchset/jose`.
 * **v0.1**: ZFS native encryption (keyformat=hex, keylocation=prompt
   via stdin, never on argv).
@@ -109,7 +109,7 @@ The lab covers:
 | `unlock` fails cleanly with `recovered only 1 / 2 required shares`.
 
 | Reboot the VM
-| `rc.d/crystal-clevis-zfs` auto-unlocks both datasets within
+| `rc.d/clevis-zfs` auto-unlocks both datasets within
   ~20 seconds; child datasets mount automatically; I/O works.
 |===
 
@@ -133,9 +133,9 @@ cd examples/qemu-lab/
 [source,shell]
 ----
 shards install
-crystal build src/cli.cr -o crystal-clevis-zfs --release
-sudo install -m 0755 crystal-clevis-zfs /usr/local/sbin/
-sudo install -m 0755 etc/rc.d/crystal-clevis-zfs /usr/local/etc/rc.d/
+crystal build src/cli.cr -o clevis-zfs --release
+sudo install -m 0755 clevis-zfs /usr/local/sbin/
+sudo install -m 0755 etc/rc.d/clevis-zfs /usr/local/etc/rc.d/
 ----
 
 Then in `/etc/rc.conf`:
@@ -177,4 +177,4 @@ MIT — see link:LICENSE[LICENSE].
 * https://github.com/latchset/clevis[Clevis] — the Linux/LUKS reference (`pin: sss`)
 * https://github.com/latchset/tang[Tang] — the server side
 * https://www.freebsd.org/cgi/man.cgi?zfsprops(7)[zfsprops(7)] — ZFS native encryption properties
-* https://github.com/aloli-crystal/crystal-jose[crystal-jose] — JOSE primitives in pure Crystal
+* https://github.com/aloli-crystal/jose[jose] — JOSE primitives in pure Crystal

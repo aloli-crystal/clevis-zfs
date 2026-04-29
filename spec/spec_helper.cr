@@ -1,5 +1,5 @@
 require "spec"
-require "../src/crystal_clevis_zfs"
+require "../src/clevis-zfs"
 
 # In-memory registry of MockTangClient instances keyed by URL. Tests
 # can use `MOCK_TANG_REGISTRY[url]` (or the `mock_tang_factory` proc
