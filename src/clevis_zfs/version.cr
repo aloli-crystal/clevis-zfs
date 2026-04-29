@@ -1,3 +1,3 @@
-module CrystalClevisZfs
+module ClevisZfs
   VERSION = "0.2.0"
 end

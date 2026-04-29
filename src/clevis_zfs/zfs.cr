@@ -1,7 +1,7 @@
 require "process"
 require "random/secure"
 
-module CrystalClevisZfs
+module ClevisZfs
   # Thin wrapper around `zfs(8)` for native-encryption operations.
   #
   # Discipline on the key material (see `crystal-clevis-zfs-specs.adoc`

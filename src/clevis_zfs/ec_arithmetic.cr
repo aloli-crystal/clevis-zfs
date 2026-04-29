@@ -1,7 +1,7 @@
 require "jose"
 require "./openssl_ext"
 
-module CrystalClevisZfs
+module ClevisZfs
   # High-level EC point arithmetic on top of the OpenSSL bindings.
   # All operations are pure-function, returning a fresh ECKey holding
   # only the public coordinates (no `d`).
@@ -13,7 +13,7 @@ module CrystalClevisZfs
 
     # Add two public-key points on the same curve. Returns a public-only
     # ECKey with the resulting (x, y) coordinates.
-    def add(a : CrystalJose::JWK::ECKey, b : CrystalJose::JWK::ECKey) : CrystalJose::JWK::ECKey
+    def add(a : Jose::JWK::ECKey, b : Jose::JWK::ECKey) : Jose::JWK::ECKey
       raise Error.new("curve mismatch") if a.curve != b.curve
 
       ec_a = build_ec_key(a)
@@ -41,7 +41,7 @@ module CrystalClevisZfs
     end
 
     # Subtract: result = a - b. Implemented as a + (-b).
-    def subtract(a : CrystalJose::JWK::ECKey, b : CrystalJose::JWK::ECKey) : CrystalJose::JWK::ECKey
+    def subtract(a : Jose::JWK::ECKey, b : Jose::JWK::ECKey) : Jose::JWK::ECKey
       raise Error.new("curve mismatch") if a.curve != b.curve
 
       ec_a = build_ec_key(a)
@@ -74,7 +74,7 @@ module CrystalClevisZfs
 
     # Scalar multiplication: result = scalar * point.
     # `scalar_priv` provides the scalar via its `d` component.
-    def scalar_mul(scalar_priv : CrystalJose::JWK::ECKey, point : CrystalJose::JWK::ECKey) : CrystalJose::JWK::ECKey
+    def scalar_mul(scalar_priv : Jose::JWK::ECKey, point : Jose::JWK::ECKey) : Jose::JWK::ECKey
       raise Error.new("curve mismatch") if scalar_priv.curve != point.curve
       raise Error.new("scalar must come from a private key (d)") unless scalar_priv.private?
 
@@ -102,7 +102,7 @@ module CrystalClevisZfs
       end
     end
 
-    private def build_ec_key(jwk : CrystalJose::JWK::ECKey) : LibCrypto::EC_KEY
+    private def build_ec_key(jwk : Jose::JWK::ECKey) : LibCrypto::EC_KEY
       ec_key = LibCrypto.ec_key_new_by_curve_name(jwk.curve.nid)
       raise Error.new("EC_KEY_new_by_curve_name failed") if ec_key.null?
 
@@ -142,7 +142,7 @@ module CrystalClevisZfs
     end
 
     private def point_to_eckey(point : LibCrypto::EcPoint, group : LibCrypto::EcGroup,
-                               curve : CrystalJose::JWK::Curve, bn_ctx : LibCrypto::BignumCtx) : CrystalJose::JWK::ECKey
+                               curve : Jose::JWK::Curve, bn_ctx : LibCrypto::BignumCtx) : Jose::JWK::ECKey
       bn_x = LibCrypto.bn_new
       bn_y = LibCrypto.bn_new
       begin
@@ -158,7 +158,7 @@ module CrystalClevisZfs
         if LibCrypto.bn_bn2binpad(bn_y, y_bytes.to_unsafe, coord_len) != coord_len
           raise Error.new("BN_bn2binpad(y) failed")
         end
-        CrystalJose::JWK::ECKey.new(curve, x_bytes, y_bytes)
+        Jose::JWK::ECKey.new(curve, x_bytes, y_bytes)
       ensure
         LibCrypto.bn_free(bn_x)
         LibCrypto.bn_free(bn_y)

@@ -3,6 +3,20 @@
 :toc-title: Versions
 :toclevels: 2
 
+== v0.2.2 — 2026-04-29
+
+=== Changed
+
+* **Internal module renamed** `CrystalClevisZfs` → `ClevisZfs`
+  (Aloli convention: strict CamelCase, no acronym preservation).
+* Source folder `src/crystal_clevis_zfs/` → `src/clevis_zfs/`.
+  Entry-point consolidated into `src/clevis-zfs.cr`. Internal
+  `require` paths updated.
+* **Updated upstream module reference** `CrystalJose::*` → `Jose::*`
+  to match the rename in `aloli-crystal/jose` v0.1.2. `shard.yml`
+  pin bumped to `~> 0.1.2`.
+* Behaviour and CLI surface unchanged.
+
 == v0.2.1 — 2026-04-29
 
 === Changed

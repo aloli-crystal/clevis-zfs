@@ -42,17 +42,17 @@ private def with_fake_zfs(behaviour : String? = nil, &)
   end
 end
 
-describe CrystalClevisZfs::Zfs do
+describe ClevisZfs::Zfs do
   describe ".random_key_hex" do
     it "produces a 64-character lowercase hex string" do
-      k = CrystalClevisZfs::Zfs.random_key_hex
+      k = ClevisZfs::Zfs.random_key_hex
       k.size.should eq(64)
       k.chars.all? { |c| c.ascii_number? || ('a'..'f').includes?(c) }.should be_true
     end
 
     it "is unique across calls" do
-      a = CrystalClevisZfs::Zfs.random_key_hex
-      b = CrystalClevisZfs::Zfs.random_key_hex
+      a = ClevisZfs::Zfs.random_key_hex
+      b = ClevisZfs::Zfs.random_key_hex
       a.should_not eq(b)
     end
   end
@@ -61,7 +61,7 @@ describe CrystalClevisZfs::Zfs do
     it "calls zfs create with the right flags and feeds the key twice via stdin" do
       with_fake_zfs do |log|
         key = "a" * 64
-        CrystalClevisZfs::Zfs.create_encrypted(
+        ClevisZfs::Zfs.create_encrypted(
           dataset: "zroot/zsys",
           key_hex: key,
           compression: "lz4",
@@ -82,23 +82,23 @@ describe CrystalClevisZfs::Zfs do
 
     it "rejects a key of wrong length" do
       with_fake_zfs do
-        expect_raises(CrystalClevisZfs::Zfs::Error, /64 hex/) do
-          CrystalClevisZfs::Zfs.create_encrypted(dataset: "zroot/x", key_hex: "abcdef")
+        expect_raises(ClevisZfs::Zfs::Error, /64 hex/) do
+          ClevisZfs::Zfs.create_encrypted(dataset: "zroot/x", key_hex: "abcdef")
         end
       end
     end
 
     it "rejects a non-hex key" do
       with_fake_zfs do
-        expect_raises(CrystalClevisZfs::Zfs::Error, /non-hex/) do
-          CrystalClevisZfs::Zfs.create_encrypted(dataset: "zroot/x", key_hex: "z" * 64)
+        expect_raises(ClevisZfs::Zfs::Error, /non-hex/) do
+          ClevisZfs::Zfs.create_encrypted(dataset: "zroot/x", key_hex: "z" * 64)
         end
       end
     end
 
     it "passes extra props" do
       with_fake_zfs do |log|
-        CrystalClevisZfs::Zfs.create_encrypted(
+        ClevisZfs::Zfs.create_encrypted(
           dataset: "zroot/x",
           key_hex: "a" * 64,
           extra_props: {"atime" => "off", "recordsize" => "16K"},
@@ -116,7 +116,7 @@ describe CrystalClevisZfs::Zfs do
         # Pretend keystatus is unavailable so we go through the full path.
         # (we'd need a real fake to mock the keystatus query — the simple
         # script below records both calls)
-        CrystalClevisZfs::Zfs.load_key("zroot/zsys", "b" * 64)
+        ClevisZfs::Zfs.load_key("zroot/zsys", "b" * 64)
         recorded = File.read(log)
         recorded.should contain("load-key")
         recorded.should contain("STDIN:#{"b" * 64}")
@@ -132,7 +132,7 @@ describe CrystalClevisZfs::Zfs do
       esac
       SH
       with_fake_zfs(behaviour: script) do |log|
-        CrystalClevisZfs::Zfs.load_key("zroot/zsys", "c" * 64)
+        ClevisZfs::Zfs.load_key("zroot/zsys", "c" * 64)
         recorded = File.read(log)
         recorded.should_not contain("load-key")
       end
@@ -147,7 +147,7 @@ describe CrystalClevisZfs::Zfs do
       esac
       SH
       with_fake_zfs(behaviour: script) do
-        CrystalClevisZfs::Zfs.key_loaded?("zroot/zsys").should be_true
+        ClevisZfs::Zfs.key_loaded?("zroot/zsys").should be_true
       end
     end
 
@@ -158,7 +158,7 @@ describe CrystalClevisZfs::Zfs do
       esac
       SH
       with_fake_zfs(behaviour: script) do
-        CrystalClevisZfs::Zfs.key_loaded?("zroot/zsys").should be_false
+        ClevisZfs::Zfs.key_loaded?("zroot/zsys").should be_false
       end
     end
   end
@@ -166,7 +166,7 @@ describe CrystalClevisZfs::Zfs do
   describe ".change_key" do
     it "calls zfs change-key with the new key on stdin" do
       with_fake_zfs do |log|
-        CrystalClevisZfs::Zfs.change_key("zroot/zsys", "d" * 64)
+        ClevisZfs::Zfs.change_key("zroot/zsys", "d" * 64)
         recorded = File.read(log)
         recorded.should contain("change-key")
         recorded.should contain("keyformat=hex")
@@ -179,7 +179,7 @@ describe CrystalClevisZfs::Zfs do
     it "is not part of the recorded CMD line for create_encrypted" do
       key = "e" * 64
       with_fake_zfs do |log|
-        CrystalClevisZfs::Zfs.create_encrypted(dataset: "zroot/x", key_hex: key)
+        ClevisZfs::Zfs.create_encrypted(dataset: "zroot/x", key_hex: key)
         recorded = File.read(log)
         # The CMD: line lists the argv. The key must NOT be there.
         cmd_line = recorded.lines.find! { |l| l.starts_with?("CMD:") }

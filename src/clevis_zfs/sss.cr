@@ -1,7 +1,7 @@
 require "random/secure"
 require "./openssl_ext"
 
-module CrystalClevisZfs
+module ClevisZfs
   # Shamir Secret Sharing over GF(p), with p a fresh random prime
   # generated per split. Format and conventions match Clevis (latchset)
   # so that interoperability with `clevis encrypt sss` remains

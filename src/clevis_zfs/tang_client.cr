@@ -6,7 +6,7 @@ require "jose"
 require "./advertisement"
 require "./ec_arithmetic"
 
-module CrystalClevisZfs
+module ClevisZfs
   # Talks to a Tang server over HTTP.
   #
   # `bind` does not contact the server beyond fetching its
@@ -37,20 +37,20 @@ module CrystalClevisZfs
     # If `derive_key` is not given, the first deriveKey from the
     # advertisement is used.
     def bind(plaintext : Bytes | String,
-             derive_key : CrystalJose::JWK::ECKey? = nil) : String
+             derive_key : Jose::JWK::ECKey? = nil) : String
       adv = advertisement
       key = derive_key || adv.derive_keys.first
       raise Error.new("derive key is not in advertisement") unless adv.derive_keys.any? { |k| k.thumbprint_base64url == key.thumbprint_base64url }
       raise Error.new("derive key must be public") if key.private?
 
-      ephemeral = CrystalJose::JWK::ECKey.generate(key.curve)
+      ephemeral = Jose::JWK::ECKey.generate(key.curve)
 
       # Use the JOSE primitives directly: ECDH(c, S) + Concat KDF -> CEK.
       # We re-do the JWE construction ourselves rather than calling
-      # CrystalJose::JWE.encrypt, because we want to embed extra
+      # Jose::JWE.encrypt, because we want to embed extra
       # `clevis.tang` claims in the protected header.
-      shared = CrystalJose::JWE.ecdh_derive(ephemeral, key)
-      cek = CrystalJose::JWE.concat_kdf_a256gcm(shared)
+      shared = Jose::JWE.ecdh_derive(ephemeral, key)
+      cek = Jose::JWE.concat_kdf_a256gcm(shared)
 
       header = {} of String => JSON::Any
       header["alg"] = JSON::Any.new("ECDH-ES")
@@ -67,17 +67,17 @@ module CrystalClevisZfs
       header["clevis"] = JSON::Any.new(clevis_claim)
 
       bytes = plaintext.is_a?(String) ? plaintext.to_slice : plaintext
-      header_b64 = CrystalJose::Utils.base64url_encode(header.to_json)
-      iv = Random::Secure.random_bytes(CrystalJose::JWE::GCM_IV_BYTES)
+      header_b64 = Jose::Utils.base64url_encode(header.to_json)
+      iv = Random::Secure.random_bytes(Jose::JWE::GCM_IV_BYTES)
       aad = header_b64.to_slice
       ciphertext, tag = aes_256_gcm_encrypt(cek, iv, aad, bytes)
 
       [
         header_b64,
         "",
-        CrystalJose::Utils.base64url_encode(iv),
-        CrystalJose::Utils.base64url_encode(ciphertext),
-        CrystalJose::Utils.base64url_encode(tag),
+        Jose::Utils.base64url_encode(iv),
+        Jose::Utils.base64url_encode(ciphertext),
+        Jose::Utils.base64url_encode(tag),
       ].join('.')
     end
 
@@ -86,7 +86,7 @@ module CrystalClevisZfs
     # and reconstructs the shared secret from the response.
     def recover(jwe : String) : Bytes
       header_b64, _enc_key, iv_b64, ct_b64, tag_b64 = split_compact(jwe)
-      header = Hash(String, JSON::Any).from_json(String.new(CrystalJose::Utils.base64url_decode(header_b64)))
+      header = Hash(String, JSON::Any).from_json(String.new(Jose::Utils.base64url_decode(header_b64)))
 
       alg = header["alg"]?.try(&.as_s)
       enc = header["enc"]?.try(&.as_s)
@@ -97,7 +97,7 @@ module CrystalClevisZfs
       epk_any = header["epk"]? || raise(Error.new("missing epk"))
       epk_hash = {} of String => JSON::Any
       epk_any.as_h.each { |k, v| epk_hash[k] = v }
-      epk = CrystalJose::JWK::ECKey.from_jwk_hash(epk_hash)
+      epk = Jose::JWK::ECKey.from_jwk_hash(epk_hash)
 
       adv = advertisement
       derive_key = adv.find_derive_key(kid) ||
@@ -111,7 +111,7 @@ module CrystalClevisZfs
       #   X = C + E
       # Tang returns Y = s * X = s.C + s.E.
       # We compute K_point = Y - e.S, which equals s.C because s.E = e.S.
-      ephemeral = CrystalJose::JWK::ECKey.generate(derive_key.curve)
+      ephemeral = Jose::JWK::ECKey.generate(derive_key.curve)
       x_point = ECArithmetic.add(epk, ephemeral.public_key)
 
       y_point = post_recover(kid, x_point)
@@ -123,13 +123,13 @@ module CrystalClevisZfs
       # The shared secret is the X-coordinate of K_point (per JWA
       # ECDH-ES: the raw shared secret Z is the X coord of the result).
       shared = k_point.x
-      cek = CrystalJose::JWE.concat_kdf_a256gcm(shared)
+      cek = Jose::JWE.concat_kdf_a256gcm(shared)
 
-      iv = CrystalJose::Utils.base64url_decode(iv_b64)
-      ct = CrystalJose::Utils.base64url_decode(ct_b64)
-      tag = CrystalJose::Utils.base64url_decode(tag_b64)
-      raise Error.new("iv has wrong length") unless iv.size == CrystalJose::JWE::GCM_IV_BYTES
-      raise Error.new("tag has wrong length") unless tag.size == CrystalJose::JWE::GCM_TAG_BYTES
+      iv = Jose::Utils.base64url_decode(iv_b64)
+      ct = Jose::Utils.base64url_decode(ct_b64)
+      tag = Jose::Utils.base64url_decode(tag_b64)
+      raise Error.new("iv has wrong length") unless iv.size == Jose::JWE::GCM_IV_BYTES
+      raise Error.new("tag has wrong length") unless tag.size == Jose::JWE::GCM_TAG_BYTES
 
       aes_256_gcm_decrypt(cek, iv, header_b64.to_slice, ct, tag)
     end
@@ -142,12 +142,12 @@ module CrystalClevisZfs
       Advertisement.from_jws(response.body.strip)
     end
 
-    protected def post_recover(kid : String, x_point : CrystalJose::JWK::ECKey) : CrystalJose::JWK::ECKey
+    protected def post_recover(kid : String, x_point : Jose::JWK::ECKey) : Jose::JWK::ECKey
       body = eckey_jwk_json(x_point)
       headers = HTTP::Headers{"Content-Type" => "application/jwk+json"}
       response = HTTP::Client.post("#{@url.chomp('/')}/rec/#{kid}", headers: headers, body: body)
       raise Error.new("recover failed: HTTP #{response.status_code}") unless response.success?
-      CrystalJose::JWK::ECKey.from_json(response.body.strip)
+      Jose::JWK::ECKey.from_json(response.body.strip)
     end
 
     private def split_compact(jwe : String) : Tuple(String, String, String, String, String)
@@ -157,21 +157,21 @@ module CrystalClevisZfs
     end
 
     private def parse_advertisement_jwks(adv_jws : String) : Hash(String, JSON::Any)
-      info = CrystalJose::JWS.decode(adv_jws)
+      info = Jose::JWS.decode(adv_jws)
       Hash(String, JSON::Any).from_json(String.new(info[:payload]))
     end
 
-    private def eckey_to_any(key : CrystalJose::JWK::ECKey) : Hash(String, JSON::Any)
+    private def eckey_to_any(key : Jose::JWK::ECKey) : Hash(String, JSON::Any)
       result = {} of String => JSON::Any
       key.to_jwk_hash.each { |k, v| result[k] = JSON::Any.new(v) }
       result
     end
 
-    private def eckey_jwk_json(key : CrystalJose::JWK::ECKey) : String
+    private def eckey_jwk_json(key : Jose::JWK::ECKey) : String
       eckey_to_any(key).to_json
     end
 
-    # Local copies of the AES-GCM helpers from CrystalJose::JWE,
+    # Local copies of the AES-GCM helpers from Jose::JWE,
     # because we need to drive the cipher with our own AAD here.
     private def aes_256_gcm_encrypt(key : Bytes, iv : Bytes, aad : Bytes, plaintext : Bytes) : Tuple(Bytes, Bytes)
       ctx = LibCrypto.evp_cipher_ctx_new
@@ -205,8 +205,8 @@ module CrystalClevisZfs
         end
         produced += outlen
 
-        tag = Bytes.new(CrystalJose::JWE::GCM_TAG_BYTES)
-        if LibCrypto.evp_cipher_ctx_ctrl(ctx, LibCrypto::EVP_CTRL_GCM_GET_TAG, CrystalJose::JWE::GCM_TAG_BYTES, tag.to_unsafe.as(Void*)) != 1
+        tag = Bytes.new(Jose::JWE::GCM_TAG_BYTES)
+        if LibCrypto.evp_cipher_ctx_ctrl(ctx, LibCrypto::EVP_CTRL_GCM_GET_TAG, Jose::JWE::GCM_TAG_BYTES, tag.to_unsafe.as(Void*)) != 1
           raise Error.new("EVP_CIPHER_CTX_ctrl(GET_TAG) failed")
         end
 

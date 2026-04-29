@@ -3,7 +3,7 @@ require "jose"
 
 # Additional LibCrypto bindings for EC point arithmetic, needed by
 # the Tang client recovery dance (point addition, scalar
-# multiplication, negation). Builds on `CrystalJose`'s bindings.
+# multiplication, negation). Builds on `Jose`'s bindings.
 lib LibCrypto
   fun ec_point_add = EC_POINT_add(group : EcGroup, r : EcPoint, a : EcPoint, b : EcPoint, ctx : BignumCtx) : Int
   fun ec_point_invert = EC_POINT_invert(group : EcGroup, point : EcPoint, ctx : BignumCtx) : Int

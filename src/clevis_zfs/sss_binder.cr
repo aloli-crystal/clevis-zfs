@@ -6,7 +6,7 @@ require "./openssl_ext"
 require "./sss"
 require "./tang_client"
 
-module CrystalClevisZfs
+module ClevisZfs
   # High-level multi-Tang bind/recover wrapping Shamir Secret Sharing.
   #
   # Format: a JWE with `alg: "dir"`, `enc: "A256GCM"` whose protected
@@ -28,8 +28,8 @@ module CrystalClevisZfs
     end
 
     SECRET_BYTES = 32 # A256GCM CEK length
-    GCM_IV_BYTES = CrystalJose::JWE::GCM_IV_BYTES
-    GCM_TAG      = CrystalJose::JWE::GCM_TAG_BYTES
+    GCM_IV_BYTES = Jose::JWE::GCM_IV_BYTES
+    GCM_TAG      = Jose::JWE::GCM_TAG_BYTES
 
     # Convenience overload: build TangClient from URLs and bind.
     def bind(plaintext : Bytes | String, tang_urls : Array(String), threshold : Int32) : String
@@ -53,7 +53,7 @@ module CrystalClevisZfs
         # JWK octet payload that the sub-JWE will encrypt.
         jwk = {
           "kty" => "oct",
-          "k"   => CrystalJose::Utils.base64url_encode(concat(point.x, point.y)),
+          "k"   => Jose::Utils.base64url_encode(concat(point.x, point.y)),
         }
         sub_jwes << tang.bind(jwk.to_json)
       end
@@ -64,7 +64,7 @@ module CrystalClevisZfs
 
       sss_obj = {} of String => JSON::Any
       sss_obj["t"] = JSON::Any.new(threshold.to_i64)
-      sss_obj["p"] = JSON::Any.new(CrystalJose::Utils.base64url_encode(split.prime))
+      sss_obj["p"] = JSON::Any.new(Jose::Utils.base64url_encode(split.prime))
       sss_obj["jwe"] = JSON::Any.new(sub_jwes.map { |j| JSON::Any.new(j) })
 
       clevis = {} of String => JSON::Any
@@ -72,7 +72,7 @@ module CrystalClevisZfs
       clevis["sss"] = JSON::Any.new(sss_obj)
       header["clevis"] = JSON::Any.new(clevis)
 
-      header_b64 = CrystalJose::Utils.base64url_encode(header.to_json)
+      header_b64 = Jose::Utils.base64url_encode(header.to_json)
       iv = Random::Secure.random_bytes(GCM_IV_BYTES)
       aad = header_b64.to_slice
       ciphertext, tag = aes_gcm_encrypt(cek, iv, aad, bytes)
@@ -80,9 +80,9 @@ module CrystalClevisZfs
       [
         header_b64,
         "",
-        CrystalJose::Utils.base64url_encode(iv),
-        CrystalJose::Utils.base64url_encode(ciphertext),
-        CrystalJose::Utils.base64url_encode(tag),
+        Jose::Utils.base64url_encode(iv),
+        Jose::Utils.base64url_encode(ciphertext),
+        Jose::Utils.base64url_encode(tag),
       ].join('.')
     end
 
@@ -100,7 +100,7 @@ module CrystalClevisZfs
 
     private def recover_inner(jwe : String, tang_factory : String -> TangClient) : Bytes
       header_b64, _enc_key, iv_b64, ct_b64, tag_b64 = split_compact(jwe)
-      header = Hash(String, JSON::Any).from_json(String.new(CrystalJose::Utils.base64url_decode(header_b64)))
+      header = Hash(String, JSON::Any).from_json(String.new(Jose::Utils.base64url_decode(header_b64)))
 
       alg = header["alg"]?.try(&.as_s) || raise(Error.new("missing alg"))
       enc = header["enc"]?.try(&.as_s) || raise(Error.new("missing enc"))
@@ -113,7 +113,7 @@ module CrystalClevisZfs
 
       threshold = sss["t"]?.try(&.as_i) || raise(Error.new("missing clevis.sss.t"))
       prime_b64 = sss["p"]?.try(&.as_s) || raise(Error.new("missing clevis.sss.p"))
-      prime = CrystalJose::Utils.base64url_decode(prime_b64)
+      prime = Jose::Utils.base64url_decode(prime_b64)
       sub_jwes = sss["jwe"]?.try(&.as_a) || raise(Error.new("missing clevis.sss.jwe"))
 
       coord_len = prime.size
@@ -142,9 +142,9 @@ module CrystalClevisZfs
 
       cek = Sss.recover(prime, points, secret_size: SECRET_BYTES)
 
-      iv = CrystalJose::Utils.base64url_decode(iv_b64)
-      ct = CrystalJose::Utils.base64url_decode(ct_b64)
-      tag = CrystalJose::Utils.base64url_decode(tag_b64)
+      iv = Jose::Utils.base64url_decode(iv_b64)
+      ct = Jose::Utils.base64url_decode(ct_b64)
+      tag = Jose::Utils.base64url_decode(tag_b64)
       raise Error.new("iv has wrong length") unless iv.size == GCM_IV_BYTES
       raise Error.new("tag has wrong length") unless tag.size == GCM_TAG
 
@@ -154,7 +154,7 @@ module CrystalClevisZfs
     # True if the JWE protected header announces clevis.pin = sss.
     def self.is_sss?(jwe : String) : Bool
       header_b64 = jwe.split('.').first
-      header = Hash(String, JSON::Any).from_json(String.new(CrystalJose::Utils.base64url_decode(header_b64)))
+      header = Hash(String, JSON::Any).from_json(String.new(Jose::Utils.base64url_decode(header_b64)))
       clevis = header["clevis"]?.try(&.as_h)
       return false unless clevis
       clevis["pin"]?.try(&.as_s) == "sss"
@@ -167,7 +167,7 @@ module CrystalClevisZfs
       # up to know which Tang to talk to, then ask the factory to build
       # the matching client.
       header_b64 = sub_jwe.split('.').first
-      header = Hash(String, JSON::Any).from_json(String.new(CrystalJose::Utils.base64url_decode(header_b64)))
+      header = Hash(String, JSON::Any).from_json(String.new(Jose::Utils.base64url_decode(header_b64)))
       clevis = header["clevis"]?.try(&.as_h) || raise(Error.new("sub-JWE missing clevis claim"))
       tang = clevis["tang"]?.try(&.as_h) || raise(Error.new("sub-JWE clevis claim is not a tang pin"))
       url = tang["url"]?.try(&.as_s) || raise(Error.new("sub-JWE missing clevis.tang.url"))
@@ -177,7 +177,7 @@ module CrystalClevisZfs
       jwk = Hash(String, JSON::Any).from_json(String.new(jwk_bytes))
       raise Error.new("sub-JWE plaintext is not a JWK") unless jwk["kty"]?.try(&.as_s) == "oct"
       k_b64 = jwk["k"]?.try(&.as_s) || raise(Error.new("sub-JWE JWK missing 'k'"))
-      CrystalJose::Utils.base64url_decode(k_b64)
+      Jose::Utils.base64url_decode(k_b64)
     end
 
     private def split_compact(jwe : String) : Tuple(String, String, String, String, String)

@@ -1,6 +1,6 @@
 require "./spec_helper"
 
-describe CrystalClevisZfs::TangClient do
+describe ClevisZfs::TangClient do
   describe "bind / recover round-trip with a mock server" do
     it "round-trips a small payload (P-521)" do
       tang = MockTangClient.new("http://mock-tang.example.com")
@@ -11,8 +11,8 @@ describe CrystalClevisZfs::TangClient do
     end
 
     it "round-trips a P-256 deriveKey" do
-      sig_priv = CrystalJose::JWK::ECKey.generate(CrystalJose::JWK::Curve::P256)
-      derive_priv = CrystalJose::JWK::ECKey.generate(CrystalJose::JWK::Curve::P256)
+      sig_priv = Jose::JWK::ECKey.generate(Jose::JWK::Curve::P256)
+      derive_priv = Jose::JWK::ECKey.generate(Jose::JWK::Curve::P256)
       tang = MockTangClient.new("http://mock", sig_priv, derive_priv)
 
       payload = "P-256 round-trip"
@@ -23,7 +23,7 @@ describe CrystalClevisZfs::TangClient do
 
     it "round-trips a 64-byte random keyfile (typical GELI key)" do
       tang = MockTangClient.new("http://mock")
-      keyfile = CrystalClevisZfs::Zfs.random_key_hex.to_slice
+      keyfile = ClevisZfs::Zfs.random_key_hex.to_slice
       jwe = tang.bind(keyfile)
       decrypted = tang.recover(jwe)
       decrypted.should eq(keyfile)
@@ -35,7 +35,7 @@ describe CrystalClevisZfs::TangClient do
       jwe.split('.').size.should eq(5)
 
       header_b64 = jwe.split('.').first
-      header = Hash(String, JSON::Any).from_json(String.new(CrystalJose::Utils.base64url_decode(header_b64)))
+      header = Hash(String, JSON::Any).from_json(String.new(Jose::Utils.base64url_decode(header_b64)))
       header["alg"].as_s.should eq("ECDH-ES")
       header["enc"].as_s.should eq("A256GCM")
       header["epk"].should_not be_nil
@@ -47,9 +47,9 @@ describe CrystalClevisZfs::TangClient do
 
   describe "advertisement validation" do
     it "rejects an advertisement signed by a key that is not in the JWKSet" do
-      foreign_signer = CrystalJose::JWK::ECKey.generate(CrystalJose::JWK::Curve::P256)
-      embedded_signer = CrystalJose::JWK::ECKey.generate(CrystalJose::JWK::Curve::P256)
-      derive_key = CrystalJose::JWK::ECKey.generate(CrystalJose::JWK::Curve::P256)
+      foreign_signer = Jose::JWK::ECKey.generate(Jose::JWK::Curve::P256)
+      embedded_signer = Jose::JWK::ECKey.generate(Jose::JWK::Curve::P256)
+      derive_key = Jose::JWK::ECKey.generate(Jose::JWK::Curve::P256)
 
       embedded_pub = embedded_signer.public_key.to_jwk_hash
       embedded_pub["use"] = "sig"
@@ -57,10 +57,10 @@ describe CrystalClevisZfs::TangClient do
       derive_pub["use"] = "deriveKey"
 
       payload = %({"keys":[#{embedded_pub.to_json},#{derive_pub.to_json}]})
-      jws = CrystalJose::JWS.sign(payload, CrystalJose::JWS::Algorithm::ES256, foreign_signer)
+      jws = Jose::JWS.sign(payload, Jose::JWS::Algorithm::ES256, foreign_signer)
 
-      expect_raises(CrystalClevisZfs::Advertisement::Error, /signature/) do
-        CrystalClevisZfs::Advertisement.from_jws(jws)
+      expect_raises(ClevisZfs::Advertisement::Error, /signature/) do
+        ClevisZfs::Advertisement.from_jws(jws)
       end
     end
 
@@ -79,12 +79,12 @@ describe CrystalClevisZfs::TangClient do
 
       # Force the kid in the header to something Tang does not have.
       header_b64, enc_key, iv_b64, ct_b64, tag_b64 = jwe.split('.')
-      header = Hash(String, JSON::Any).from_json(String.new(CrystalJose::Utils.base64url_decode(header_b64)))
+      header = Hash(String, JSON::Any).from_json(String.new(Jose::Utils.base64url_decode(header_b64)))
       header["kid"] = JSON::Any.new("bogus-thumbprint")
-      bad_header_b64 = CrystalJose::Utils.base64url_encode(header.to_json)
+      bad_header_b64 = Jose::Utils.base64url_encode(header.to_json)
       tampered = "#{bad_header_b64}.#{enc_key}.#{iv_b64}.#{ct_b64}.#{tag_b64}"
 
-      expect_raises(CrystalClevisZfs::TangClient::Error, /not found/) do
+      expect_raises(ClevisZfs::TangClient::Error, /not found/) do
         tang.recover(tampered)
       end
     end
@@ -92,9 +92,9 @@ describe CrystalClevisZfs::TangClient do
     it "rejects an alg other than ECDH-ES" do
       tang = MockTangClient.new("http://mock")
       header = {"alg" => "RSA-OAEP", "enc" => "A256GCM"}
-      header_b64 = CrystalJose::Utils.base64url_encode(header.to_json)
+      header_b64 = Jose::Utils.base64url_encode(header.to_json)
       jwe = "#{header_b64}.x.x.x.x"
-      expect_raises(CrystalClevisZfs::TangClient::Error, /alg/) do
+      expect_raises(ClevisZfs::TangClient::Error, /alg/) do
         tang.recover(jwe)
       end
     end
