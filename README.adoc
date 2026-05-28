@@ -133,8 +133,8 @@ cd examples/qemu-lab/
 [source,shell]
 ----
 shards install
-crystal build src/cli.cr -o clevis-zfs --release
-sudo install -m 0755 clevis-zfs /usr/local/sbin/
+shards build --release
+sudo install -m 0755 bin/clevis-zfs /usr/local/sbin/
 sudo install -m 0755 etc/rc.d/clevis-zfs /usr/local/etc/rc.d/
 ----
 
