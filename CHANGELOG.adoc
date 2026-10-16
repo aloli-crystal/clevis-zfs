@@ -3,6 +3,14 @@
 :toc-title: Versions
 :toclevels: 2
 
+== v0.2.5 — 2026-10-16
+
+=== Changed
+
+* `jose` pinned to `~> 0.2.1`: compatibility with Crystal 1.22, which now
+  defines the GCM constants of `LibCrypto` itself (jose 0.2.0 redefined them,
+  « already initialized constant »). No API change for this shard.
+
 == v0.2.2 — 2026-04-29
 
 === Changed
