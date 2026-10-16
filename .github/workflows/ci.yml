@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        crystal: ["1.19.0", "1.19.1"]
+        crystal: ["1.19.0", "1.22.0"]
 
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
         run: crystal spec
 
       - name: Run linter
-        run: bin/ameba
+        run: crystal run lib/ameba/bin/ameba.cr --
 
       - name: Build CLI
         run: crystal build src/cli.cr -o crystal-clevis-zfs --release

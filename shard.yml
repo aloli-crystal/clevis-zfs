@@ -1,5 +1,5 @@
 name: clevis-zfs
-version: 0.2.5
+version: 0.2.6
 description: |
   Tang client + ZFS native encryption driver for FreeBSD: unattended
   unlock of encrypted ZFS datasets at boot via the Tang protocol
@@ -23,4 +23,4 @@ dependencies:
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
-    version: "~> 1.6"
+    version: "~> 1.7"

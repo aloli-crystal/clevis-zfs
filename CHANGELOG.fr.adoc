@@ -3,6 +3,13 @@
 :toc-title: Versions
 :toclevels: 2
 
+== v0.2.6 — 2026-10-16
+
+=== Modifié
+
+* ameba 1.7 et Crystal 1.22.0 en CI ; nouvelles règles appliquées,
+  aucun changement de comportement.
+
 == v0.2.5 — 2026-10-16
 
 === Modifié

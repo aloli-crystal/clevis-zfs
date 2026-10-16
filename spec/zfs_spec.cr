@@ -14,18 +14,18 @@ private def with_fake_zfs(behaviour : String? = nil, &)
 
   script = String.build do |s|
     s << <<-SH
-    #!/bin/sh
-    set -e
-    LOG="#{log}"
-    {
-      printf 'CMD:'
-      for a in "$@"; do printf ' %s' "$a"; done
-      printf '\\n'
-      printf 'STDIN:'
-      stdin=$(cat)
-      printf '%s\\n' "$stdin"
-    } >> "$LOG"
-    SH
+      #!/bin/sh
+      set -e
+      LOG="#{log}"
+      {
+        printf 'CMD:'
+        for a in "$@"; do printf ' %s' "$a"; done
+        printf '\\n'
+        printf 'STDIN:'
+        stdin=$(cat)
+        printf '%s\\n' "$stdin"
+      } >> "$LOG"
+      SH
     if behaviour
       s << "\n" << behaviour << "\n"
     end
@@ -127,10 +127,10 @@ describe ClevisZfs::Zfs do
       # Make the fake `zfs get keystatus` return "available" so load_key
       # short-circuits before invoking load-key.
       script = <<-SH
-      case "$1" in
-        get) echo "available"; exit 0 ;;
-      esac
-      SH
+        case "$1" in
+          get) echo "available"; exit 0 ;;
+        esac
+        SH
       with_fake_zfs(behaviour: script) do |log|
         ClevisZfs::Zfs.load_key("zroot/zsys", "c" * 64)
         recorded = File.read(log)
@@ -142,10 +142,10 @@ describe ClevisZfs::Zfs do
   describe ".key_loaded?" do
     it "returns true when keystatus is available" do
       script = <<-SH
-      case "$1" in
-        get) echo "available"; exit 0 ;;
-      esac
-      SH
+        case "$1" in
+          get) echo "available"; exit 0 ;;
+        esac
+        SH
       with_fake_zfs(behaviour: script) do
         ClevisZfs::Zfs.key_loaded?("zroot/zsys").should be_true
       end
@@ -153,10 +153,10 @@ describe ClevisZfs::Zfs do
 
     it "returns false when keystatus is unavailable" do
       script = <<-SH
-      case "$1" in
-        get) echo "unavailable"; exit 0 ;;
-      esac
-      SH
+        case "$1" in
+          get) echo "unavailable"; exit 0 ;;
+        esac
+        SH
       with_fake_zfs(behaviour: script) do
         ClevisZfs::Zfs.key_loaded?("zroot/zsys").should be_false
       end

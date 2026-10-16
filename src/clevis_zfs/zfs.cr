@@ -110,7 +110,7 @@ module ClevisZfs
     # value (stripped) or nil if the dataset / property doesn't exist.
     def get_property(dataset : String, property : String) : String?
       out, ok = capture([binary, "get", "-H", "-o", "value", property, dataset])
-      return nil unless ok
+      return unless ok
       out.try(&.strip)
     end
 
