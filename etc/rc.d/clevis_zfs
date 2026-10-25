@@ -1,63 +1,63 @@
 #!/bin/sh
 #
 # rc.d script: unattended boot-time unlock of Tang-bound ZFS
-# encrypted datasets via crystal-clevis-zfs.
+# encrypted datasets via clevis-zfs.
 #
 # Configuration in /etc/rc.conf:
 #
-#   crystal_clevis_zfs_enable="YES"
+#   clevis_zfs_enable="YES"
 #   # Space-separated list of datasets to unlock at boot.
-#   crystal_clevis_zfs_datasets="zroot/zsys zroot/zdata zroot/zsave"
+#   clevis_zfs_datasets="zroot/zsys zroot/zdata zroot/zsave"
 #
 #   # Optional: override the JWE storage directory
-#   #crystal_clevis_zfs_keystore="/var/db/crystal-clevis-zfs"
+#   #clevis_zfs_keystore="/var/db/clevis-zfs"
 #
 #   # Optional: override the binary path
-#   #crystal_clevis_zfs_bin="/usr/local/sbin/crystal-clevis-zfs"
+#   #clevis_zfs_bin="/usr/local/sbin/clevis-zfs"
 #
 # This script runs AFTER networking is up (Tang must be reachable)
 # and BEFORE mountcritremote / DAEMON, so encrypted datasets are
 # available to anything that mounts them later.
 
-# PROVIDE: crystal_clevis_zfs
+# PROVIDE: clevis_zfs
 # REQUIRE: NETWORKING
 # BEFORE:  mountcritremote DAEMON
 # KEYWORD: nojail shutdown
 
 . /etc/rc.subr
 
-name="crystal_clevis_zfs"
+name="clevis_zfs"
 desc="Unattended Tang-based unlock for ZFS encrypted datasets"
-rcvar="crystal_clevis_zfs_enable"
+rcvar="clevis_zfs_enable"
 
 load_rc_config $name
 
-: ${crystal_clevis_zfs_enable:="NO"}
-: ${crystal_clevis_zfs_bin:="/usr/local/sbin/crystal-clevis-zfs"}
-: ${crystal_clevis_zfs_keystore:="/var/db/crystal-clevis-zfs"}
-: ${crystal_clevis_zfs_datasets:=""}
+: ${clevis_zfs_enable:="NO"}
+: ${clevis_zfs_bin:="/usr/local/sbin/clevis-zfs"}
+: ${clevis_zfs_keystore:="/var/db/clevis-zfs"}
+: ${clevis_zfs_datasets:=""}
 
-start_cmd="crystal_clevis_zfs_start"
-stop_cmd="crystal_clevis_zfs_stop"
-status_cmd="crystal_clevis_zfs_status"
+start_cmd="clevis_zfs_start"
+stop_cmd="clevis_zfs_stop"
+status_cmd="clevis_zfs_status"
 extra_commands="status"
 
-crystal_clevis_zfs_start() {
-	if [ -z "${crystal_clevis_zfs_datasets}" ]; then
-		echo "${name}: no datasets configured (crystal_clevis_zfs_datasets is empty)"
+clevis_zfs_start() {
+	if [ -z "${clevis_zfs_datasets}" ]; then
+		echo "${name}: no datasets configured (clevis_zfs_datasets is empty)"
 		return 0
 	fi
-	if [ ! -x "${crystal_clevis_zfs_bin}" ]; then
-		echo "${name}: binary not found or not executable: ${crystal_clevis_zfs_bin}"
+	if [ ! -x "${clevis_zfs_bin}" ]; then
+		echo "${name}: binary not found or not executable: ${clevis_zfs_bin}"
 		return 1
 	fi
 
 	rc=0
-	for ds in ${crystal_clevis_zfs_datasets}; do
+	for ds in ${clevis_zfs_datasets}; do
 		echo "${name}: unlocking ${ds}"
-		if ! "${crystal_clevis_zfs_bin}" unlock \
+		if ! "${clevis_zfs_bin}" unlock \
 				--dataset "${ds}" \
-				--key-store "${crystal_clevis_zfs_keystore}"; then
+				--key-store "${clevis_zfs_keystore}"; then
 			echo "${name}: failed to unlock ${ds}" >&2
 			rc=1
 		fi
@@ -65,7 +65,7 @@ crystal_clevis_zfs_start() {
 	return $rc
 }
 
-crystal_clevis_zfs_stop() {
+clevis_zfs_stop() {
 	# We don't unmount here — the standard FreeBSD shutdown sequence
 	# handles unmounts via mountcritremote. Unloading the keys at
 	# stop time is also unnecessary because the datasets become
@@ -73,12 +73,12 @@ crystal_clevis_zfs_stop() {
 	return 0
 }
 
-crystal_clevis_zfs_status() {
-	if [ -z "${crystal_clevis_zfs_datasets}" ]; then
+clevis_zfs_status() {
+	if [ -z "${clevis_zfs_datasets}" ]; then
 		echo "${name}: no datasets configured"
 		return 0
 	fi
-	for ds in ${crystal_clevis_zfs_datasets}; do
+	for ds in ${clevis_zfs_datasets}; do
 		ks=$(zfs get -H -o value keystatus "${ds}" 2>/dev/null || echo "?")
 		echo "${name}: ${ds} keystatus=${ks}"
 	done

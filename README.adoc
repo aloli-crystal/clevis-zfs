@@ -9,7 +9,7 @@ Tang client + ZFS native encryption driver for FreeBSD: **unattended
 boot-time unlock** of encrypted ZFS datasets via the Tang protocol
 (Network-Bound Disk Encryption — NBDE).
 
-Successor to https://github.com/aloli-crystal/crystal-clevis-geli[crystal-clevis-geli],
+Successor to https://github.com/aloli-crystal/clevis-geli[clevis-geli],
 using ZFS native encryption instead of GELI to benefit from
 **pre-encryption compression** and **`zfs send -w` portable
 encrypted backups**.
@@ -109,7 +109,7 @@ The lab covers:
 | `unlock` fails cleanly with `recovered only 1 / 2 required shares`.
 
 | Reboot the VM
-| `rc.d/clevis-zfs` auto-unlocks both datasets within
+| `rc.d/clevis_zfs` auto-unlocks both datasets within
   ~20 seconds; child datasets mount automatically; I/O works.
 |===
 
@@ -135,15 +135,15 @@ cd examples/qemu-lab/
 shards install
 shards build --release
 sudo install -m 0755 bin/clevis-zfs /usr/local/sbin/
-sudo install -m 0755 etc/rc.d/clevis-zfs /usr/local/etc/rc.d/
+sudo install -m 0755 etc/rc.d/clevis_zfs /usr/local/etc/rc.d/
 ----
 
 Then in `/etc/rc.conf`:
 
 [source,shell]
 ----
-crystal_clevis_zfs_enable="YES"
-crystal_clevis_zfs_datasets="zroot/zsys zroot/zdata zroot/zsave"
+clevis_zfs_enable="YES"
+clevis_zfs_datasets="zroot/zsys zroot/zdata zroot/zsave"
 ----
 
 == Development

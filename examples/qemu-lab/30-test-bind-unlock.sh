@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end test for crystal-clevis-zfs.
+# End-to-end test for clevis-zfs.
 #
 # Flow:
 #   1. Reset any previous state (zpool destroy testpool, mdconfig -d, rm jwe).
@@ -25,7 +25,7 @@ URL3="http://10.0.2.2:${TANG_HTTP_PORT3}"
 echo "[test] resetting client state"
 run_ssh client "sudo zpool destroy testpool 2>/dev/null || true"
 run_ssh client "sudo mdconfig -d -u 1 2>/dev/null || true"
-run_ssh client "sudo rm -f /var/db/crystal-clevis-zfs/*.jwe"
+run_ssh client "sudo rm -f /var/db/clevis-zfs/*.jwe"
 
 echo "[test] creating a 1 GiB file-backed pool 'testpool'"
 run_ssh client "sudo truncate -s 1G /var/zpool-test.img"
@@ -38,7 +38,7 @@ echo
 echo "============================================================"
 echo "TEST 1 — single-Tang bind/unlock on testpool/zsys"
 echo "============================================================"
-run_ssh client "sudo /usr/local/sbin/crystal-clevis-zfs bind --init \
+run_ssh client "sudo /usr/local/sbin/clevis-zfs bind --init \
   --dataset testpool/zsys --tang ${URL1}"
 
 echo "[test] verifying ZFS properties"
@@ -47,7 +47,7 @@ run_ssh client "zfs get -H -o property,value encryption,keyformat,keystatus,comp
 echo "[test] unload key and unlock again"
 run_ssh client "sudo zfs unload-key testpool/zsys"
 run_ssh client "test \"\$(zfs get -H -o value keystatus testpool/zsys)\" = unavailable && echo OK_unavailable"
-run_ssh client "sudo /usr/local/sbin/crystal-clevis-zfs unlock --dataset testpool/zsys"
+run_ssh client "sudo /usr/local/sbin/clevis-zfs unlock --dataset testpool/zsys"
 run_ssh client "test \"\$(zfs get -H -o value keystatus testpool/zsys)\" = available && echo OK_available"
 
 echo "[test] write/read data through the encrypted dataset"
@@ -60,18 +60,18 @@ echo
 echo "============================================================"
 echo "TEST 2 — multi-Tang K=2/N=3 on testpool/zdata"
 echo "============================================================"
-run_ssh client "sudo /usr/local/sbin/crystal-clevis-zfs bind --init \
+run_ssh client "sudo /usr/local/sbin/clevis-zfs bind --init \
   --dataset testpool/zdata \
   --tang ${URL1} --tang ${URL2} --tang ${URL3} \
   --threshold 2"
 
 echo "[test] verifying JWE format (clevis.sss in header)"
-run_ssh client "sudo head -c 100 /var/db/crystal-clevis-zfs/testpool__zdata.jwe; echo"
-run_ssh client "sudo wc -c /var/db/crystal-clevis-zfs/testpool__zdata.jwe"
+run_ssh client "sudo head -c 100 /var/db/clevis-zfs/testpool__zdata.jwe; echo"
+run_ssh client "sudo wc -c /var/db/clevis-zfs/testpool__zdata.jwe"
 
 echo "[test] unlock with all 3 Tangs reachable"
 run_ssh client "sudo zfs unload-key testpool/zdata"
-run_ssh client "sudo /usr/local/sbin/crystal-clevis-zfs unlock --dataset testpool/zdata"
+run_ssh client "sudo /usr/local/sbin/clevis-zfs unlock --dataset testpool/zdata"
 run_ssh client "test \"\$(zfs get -H -o value keystatus testpool/zdata)\" = available && echo OK_3of3"
 
 # ============================================================================
@@ -83,7 +83,7 @@ run_ssh tang "sudo pkill -f 'tangd -p ${TANG_HTTP_PORT2}' || true"
 run_ssh tang "sudo sockstat -l4 | grep tangd || echo '(tangs running)'"
 
 run_ssh client "sudo zfs unload-key testpool/zdata"
-run_ssh client "sudo /usr/local/sbin/crystal-clevis-zfs unlock --dataset testpool/zdata"
+run_ssh client "sudo /usr/local/sbin/clevis-zfs unlock --dataset testpool/zdata"
 run_ssh client "test \"\$(zfs get -H -o value keystatus testpool/zdata)\" = available && echo OK_2of3_after_1_failure"
 
 # ============================================================================
@@ -95,7 +95,7 @@ run_ssh tang "sudo pkill -f 'tangd -p ${TANG_HTTP_PORT3}' || true"
 run_ssh tang "sudo sockstat -l4 | grep tangd || echo '(tangs running)'"
 
 run_ssh client "sudo zfs unload-key testpool/zdata"
-if run_ssh client "sudo /usr/local/sbin/crystal-clevis-zfs unlock --dataset testpool/zdata" 2>&1; then
+if run_ssh client "sudo /usr/local/sbin/clevis-zfs unlock --dataset testpool/zdata" 2>&1; then
   echo "[test] FAIL: unlock unexpectedly succeeded with only 1 Tang up"
   exit 1
 else
@@ -118,5 +118,5 @@ run_ssh tang "sleep 1 && sudo sockstat -l4 | grep tangd"
 
 echo
 echo "============================================================"
-echo "ALL TESTS PASSED — crystal-clevis-zfs is functional end-to-end"
+echo "ALL TESTS PASSED — clevis-zfs is functional end-to-end"
 echo "============================================================"

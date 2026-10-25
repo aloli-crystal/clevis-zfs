@@ -8,7 +8,7 @@ require "./clevis-zfs"
 module ClevisZfs::CLI
   extend self
 
-  DEFAULT_KEY_STORE = "/var/db/crystal-clevis-zfs"
+  DEFAULT_KEY_STORE = "/var/db/clevis-zfs"
 
   def run(argv : Array(String)) : Int32
     if argv.empty?
@@ -22,7 +22,7 @@ module ClevisZfs::CLI
     when "unlock", "u"
       unlock(argv[1..-1])
     when "version", "v", "--version", "-V"
-      puts "crystal-clevis-zfs #{ClevisZfs::VERSION}"
+      puts "clevis-zfs #{ClevisZfs::VERSION}"
       0
     when "help", "h", "--help", "-h"
       print_global_help(STDOUT)
@@ -46,7 +46,7 @@ module ClevisZfs::CLI
     mountpoint : String? = "none"
 
     OptionParser.parse(argv.dup) do |parser|
-      parser.banner = "Usage: crystal-clevis-zfs bind -d DATASET -t TANG_URL [-t TANG_URL ...] (--init|--use-existing-key) [options]"
+      parser.banner = "Usage: clevis-zfs bind -d DATASET -t TANG_URL [-t TANG_URL ...] (--init|--use-existing-key) [options]"
       parser.on("-d NAME", "--dataset=NAME", "ZFS dataset (e.g. zroot/zsys)") { |v| dataset = v }
       parser.on("-t URL", "--tang=URL", "Tang server URL (repeat for multiple Tangs)") { |v| tang_urls << v }
       parser.on("-k K", "--threshold=K", "Threshold K (Tangs required to unlock); default 1") { |v| threshold = v.to_i }
@@ -176,7 +176,7 @@ module ClevisZfs::CLI
     no_mount = false
 
     OptionParser.parse(argv.dup) do |parser|
-      parser.banner = "Usage: crystal-clevis-zfs unlock -d DATASET [options]"
+      parser.banner = "Usage: clevis-zfs unlock -d DATASET [options]"
       parser.on("-d NAME", "--dataset=NAME", "ZFS dataset to unlock") { |v| dataset = v }
       parser.on("-s PATH", "--key-store=PATH", "JWE storage directory (default: #{DEFAULT_KEY_STORE})") { |v| key_store = v }
       parser.on("-n", "--no-mount", "Load the key but do not mount") { no_mount = true }
@@ -236,7 +236,7 @@ module ClevisZfs::CLI
   end
 
   private def print_global_help(io : IO)
-    io.puts "Usage: crystal-clevis-zfs SUBCOMMAND [options]"
+    io.puts "Usage: clevis-zfs SUBCOMMAND [options]"
     io.puts
     io.puts "Subcommands:"
     io.puts "  bind, b      Bind a ZFS dataset to a Tang server"
@@ -244,8 +244,8 @@ module ClevisZfs::CLI
     io.puts "  version, v   Print version"
     io.puts "  help, h      Show this help"
     io.puts
-    io.puts "Run `crystal-clevis-zfs SUBCOMMAND -h` for subcommand-specific options."
+    io.puts "Run `clevis-zfs SUBCOMMAND -h` for subcommand-specific options."
   end
 end
 
-exit ClevisZfs::CLI.run(ARGV) if PROGRAM_NAME.includes?("crystal-clevis-zfs") || PROGRAM_NAME.includes?("cli")
+exit ClevisZfs::CLI.run(ARGV) if PROGRAM_NAME.includes?("clevis-zfs") || PROGRAM_NAME.includes?("cli")

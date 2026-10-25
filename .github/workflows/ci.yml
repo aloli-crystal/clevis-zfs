@@ -34,4 +34,4 @@ jobs:
         run: crystal run lib/ameba/bin/ameba.cr --
 
       - name: Build CLI
-        run: crystal build src/cli.cr -o crystal-clevis-zfs --release
+        run: crystal build src/cli.cr -o clevis-zfs --release

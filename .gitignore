@@ -4,7 +4,7 @@
 /.shards/
 *.dwarf
 *.o
-/crystal-clevis-zfs
+/clevis-zfs
 .DS_Store
 
 # Local artefacts of the QEMU lab in examples/ — never commit these:

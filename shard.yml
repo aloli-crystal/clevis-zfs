@@ -1,9 +1,9 @@
 name: clevis-zfs
-version: 0.2.6
+version: 0.2.7
 description: |
   Tang client + ZFS native encryption driver for FreeBSD: unattended
   unlock of encrypted ZFS datasets at boot via the Tang protocol
-  (Network-Bound Disk Encryption). Successor to crystal-clevis-geli,
+  (Network-Bound Disk Encryption). Successor to clevis-geli,
   using ZFS native encryption instead of GELI to benefit from
   pre-encryption compression and `zfs send -w` portable backups.
 authors:

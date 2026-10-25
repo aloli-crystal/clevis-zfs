@@ -1,4 +1,4 @@
-= Banc de test QEMU pour crystal-clevis-zfs
+= Banc de test QEMU pour clevis-zfs
 :author: Philippe Nénert
 :revdate: 28 avril 2026
 :revnumber: 0.3
@@ -8,17 +8,17 @@
 
 Bac à sable scriptable, sur **macOS Apple Silicon**, qui monte deux
 VMs FreeBSD 15 aarch64 pour valider de bout en bout
-`crystal-clevis-zfs` :
+`clevis-zfs` :
 
 * **VM `tang`** héberge **trois** instances Tang (paquet FreeBSD
   `security/tang`) sur les ports 8888, 8889, 8890 — la première
   via rc.d, les deux autres lancées manuellement.
 * **VM `client`** crée un pool ZFS de test, exerce
-  `crystal-clevis-zfs` en single-Tang et multi-Tang K=2/N=3 (avec
+  `clevis-zfs` en single-Tang et multi-Tang K=2/N=3 (avec
   simulation de pannes).
 
-NOTE: Cette révision (0.2) cible `crystal-clevis-zfs`. La rev 0.1
-testait `crystal-clevis-geli` (déprécié). Voir
+NOTE: Cette révision (0.2) cible `clevis-zfs`. La rev 0.1
+testait `clevis-geli` (déprécié). Voir
 `beryl/boot-and-mount-plan.adoc` § « Pivot GELI → ZFS
 native » pour la justification.
 
@@ -122,7 +122,7 @@ tail -f logs/client.log   # console série de la VM client
   (pas de persistance hors disque). Pour rejouer exactement le
   même enrôlement, ne pas effacer `run/tang.qcow2`.
 * Le test ne couvre pas le **boot automatique** (rc.d
-  `crystal-clevis-zfs unlock` au démarrage). Cela viendra dans une
+  `clevis-zfs unlock` au démarrage). Cela viendra dans une
   itération suivante (configurer rc.conf + reboot la VM).
 * Tang #2 et #3 sont lancés manuellement via `tangd -p PORT -l DIR`
   et ne survivent pas à un reboot de la VM tang. Pour les

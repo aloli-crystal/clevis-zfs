@@ -4,7 +4,7 @@ require "random/secure"
 module ClevisZfs
   # Thin wrapper around `zfs(8)` for native-encryption operations.
   #
-  # Discipline on the key material (see `crystal-clevis-zfs-specs.adoc`
+  # Discipline on the key material (see `clevis-zfs-specs.adoc`
   # § « Discipline de la clé en mémoire ») :
   #
   # * Never passed as a CLI argument (would leak through `ps`).

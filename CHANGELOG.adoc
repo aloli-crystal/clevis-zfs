@@ -3,6 +3,16 @@
 :toc-title: Versions
 :toclevels: 2
 
+== v0.2.7 — 2026-10-25
+
+=== Changed
+
+* **Rename to `clevis-zfs` completed** (the repository was renamed in
+  v0.2.1): binary `clevis-zfs`, rc.d script `clevis_zfs` (variables
+  `clevis_zfs_enable`, `clevis_zfs_datasets`, `clevis_zfs_keystore`,
+  `clevis_zfs_bin`), JWE directory `/var/db/clevis-zfs`. No
+  `crystal-clevis-zfs` left. No behaviour or format change.
+
 == v0.2.6 — 2026-10-16
 
 === Changed

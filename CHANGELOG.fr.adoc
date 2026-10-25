@@ -3,6 +3,16 @@
 :toc-title: Versions
 :toclevels: 2
 
+== v0.2.7 — 2026-10-25
+
+=== Modifié
+
+* **Fin du renommage en `clevis-zfs`** (le dépôt l'était depuis la v0.2.1) :
+  binaire `clevis-zfs`, script rc.d `clevis_zfs` (variables
+  `clevis_zfs_enable`, `clevis_zfs_datasets`, `clevis_zfs_keystore`,
+  `clevis_zfs_bin`), dossier des JWE `/var/db/clevis-zfs`. Plus aucun
+  `crystal-clevis-zfs`. Aucun changement de comportement ni de format.
+
 == v0.2.6 — 2026-10-16
 
 === Modifié
