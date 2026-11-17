@@ -3,6 +3,13 @@
 :toc-title: Versions
 :toclevels: 2
 
+== v0.2.10 — 2026-11-17
+
+=== Changed
+
+* Mentions of internal conventions removed from the v0.2.1 and v0.2.2
+  entries and from two code comments. No behaviour change.
+
 == v0.2.9 — 2026-11-17
 
 === Changed
@@ -45,7 +52,7 @@
 === Changed
 
 * **Internal module renamed** `CrystalClevisZfs` → `ClevisZfs`
-  (Aloli convention: strict CamelCase, no acronym preservation).
+  (strict CamelCase, no acronym preservation).
 * Source folder `src/crystal_clevis_zfs/` → `src/clevis_zfs/`.
   Entry-point consolidated into `src/clevis-zfs.cr`. Internal
   `require` paths updated.
@@ -59,8 +66,7 @@
 === Changed
 
 * **GitHub repository renamed** to `aloli-crystal/clevis-zfs`
-  (Aloli naming convention: original creations drop the `crystal-`
-  prefix). Old links redirect automatically.
+  (original creations drop the `crystal-` prefix). Old links redirect automatically.
 * `name:` field, build target and CLI binary aligned on the new repo
   name. Entry-point shim renamed to `src/clevis-zfs.cr` (still loads
   `src/crystal_clevis_zfs.cr`, which holds the actual code).

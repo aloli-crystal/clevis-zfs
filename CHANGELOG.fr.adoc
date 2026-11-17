@@ -3,6 +3,14 @@
 :toc-title: Versions
 :toclevels: 2
 
+== v0.2.10 — 2026-11-17
+
+=== Modifié
+
+* Mentions de conventions internes retirées des entrées v0.2.1 et
+  v0.2.2 et de deux commentaires du code. Aucun changement de
+  comportement.
+
 == v0.2.9 — 2026-11-17
 
 === Modifié
@@ -47,8 +55,7 @@
 === Modifié
 
 * **Module interne renommé** `CrystalClevisZfs` → `ClevisZfs`
-  (convention Aloli : CamelCase strict, pas de préservation
-  d'acronyme).
+  (CamelCase strict, pas de préservation d'acronyme).
 * Dossier source `src/crystal_clevis_zfs/` → `src/clevis_zfs/`.
   Fichier d'entrée consolidé dans `src/clevis-zfs.cr`. Chemins
   `require` internes adaptés.
@@ -61,9 +68,8 @@
 
 === Modifié
 
-* **Repo GitHub renommé** vers `aloli-crystal/clevis-zfs` (convention
-  de nommage Aloli : les créations originales abandonnent le préfixe
-  `crystal-`). Les anciens liens redirigent automatiquement.
+* **Repo GitHub renommé** vers `aloli-crystal/clevis-zfs` (les
+  créations originales abandonnent le préfixe `crystal-`). Les anciens liens redirigent automatiquement.
 * Champ `name:`, cible de compilation et binaire CLI alignés sur le
   nouveau nom du repo. Shim d'entrée renommé `src/clevis-zfs.cr`
   (charge toujours `src/crystal_clevis_zfs.cr`, le code).

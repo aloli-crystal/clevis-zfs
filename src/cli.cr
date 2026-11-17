@@ -3,7 +3,7 @@ require "file_utils"
 require "json"
 require "./clevis-zfs"
 
-# Convention (Aloli CLI UX): every long flag has a short equivalent;
+# Convention: every long flag has a short equivalent;
 # every subcommand has a short alias.
 module ClevisZfs::CLI
   extend self

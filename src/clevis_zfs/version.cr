@@ -1,6 +1,6 @@
 module ClevisZfs
   # Lue au compile-time depuis `shard.yml` via le macro `read_file`.
-  # Cf. note mémoire `feedback_shard_version_macro.md` (mémoire ALOLI).
+  # Évite toute désynchronisation entre cette constante et shard.yml.
   VERSION = {{
               (read_file("#{__DIR__}/../../shard.yml")
                 .lines
