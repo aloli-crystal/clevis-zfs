@@ -3,6 +3,19 @@
 :toc-title: Versions
 :toclevels: 2
 
+== v0.2.9 — 2026-11-17
+
+=== Changed
+
+* Changelog: missing v0.2.8 entry added. No code change.
+
+== v0.2.8 — 2026-10-26
+
+=== Changed
+
+* CI on Crystal 1.21.1 only (the version available on FreeBSD; 1.22 not
+  packaged yet), instead of 1.19.0 and 1.22.0. No code change.
+
 == v0.2.7 — 2026-10-25
 
 === Changed
